@@ -2,10 +2,10 @@ schema_version: 1
 slug: world-cup-neighbors
 intent: Stylized Brazil watch-party neighbor figurines for the Bambu Lab A1 mini.
 privacy: public_safe
-lane: figurine
-status: print_feedback
-current_revision: v001
-next_safe_action: revise source from print feedback
+lane: build123d
+status: design
+current_revision: v002
+next_safe_action: export build123d v2 and review geometry
 printer:
   model: Bambu Lab A1 mini
   build_volume_mm:
@@ -25,12 +25,14 @@ plate:
   side: textured
 constraints:
   dimensions_mm:
-  - shared base remains within 118 x 62 mm
-  tolerance_notes: Decorative print; prioritize supportless raised details over dimensional
-    fit.
+  - shared base target 125 x 70 mm, soft max 130 x 75 mm
+  - height under 85 mm
+  tolerance_notes: Decorative print; prioritize chunky support-aware facial cues,
+    goal backdrop structure, and paint-friendly Brazil jersey panels.
 manual_gates:
 - export_review
 - slicer_review
 - print_start
 source_files:
+- source/model.py
 - outputs/world-cup-neighbors.scad

@@ -135,6 +135,12 @@ uv run bambu make-figurines --output outputs/world-cup-neighbors.scad
 
 The example creates two simplified soccer-supporter figures with Brazil-inspired jersey panels and raised number guides. It is designed for single-material printing and post-print painting. It does not include private photos or official team marks.
 
+## World Cup Neighbors V2 Learning Path
+
+World Cup neighbors v2 is the first build123d learning pass for a personal figurine scene. The active source lives in `projects/world-cup-neighbors/source/model.py`, with project-specific notes in `projects/world-cup-neighbors/source/README.md`.
+
+Reusable lessons are captured in `docs/learning/build123d-figurine-workflow.md`: chunky attached face cues, structural scene props, low-relief soccer details, and the safe export-review loop before slicing or printing.
+
 ## Public Repo Safety
 
 Do not commit:

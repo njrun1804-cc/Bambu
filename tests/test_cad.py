@@ -45,6 +45,16 @@ class CadTests(unittest.TestCase):
 
         self.assertIn("model", str(error.exception))
 
+    def test_world_cup_v2_source_defines_exportable_model(self):
+        from bambu.cad import load_build123d_model
+
+        model = load_build123d_model(Path("projects/world-cup-neighbors/source/model.py"))
+
+        box = model.bounding_box()
+        self.assertLessEqual(float(box.size.X), 130.0)
+        self.assertLessEqual(float(box.size.Y), 75.0)
+        self.assertLessEqual(float(box.size.Z), 85.0)
+
 
 if __name__ == "__main__":
     unittest.main()
