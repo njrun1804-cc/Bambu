@@ -12,6 +12,7 @@ Bambu is a public-ready workbench for describing what you want in plain English,
 - Generates a stylized pair of Brazil-watch-party figurines as OpenSCAD.
 - Builds dry-run slicer commands for Bambu Studio or OrcaSlicer.
 - Builds the current safe prototype through SCAD, STL, and sliced 3MF without printer contact.
+- Reviews build123d STEP/STL outputs through headless FreeCAD and Blender previews without printer contact.
 - Checks the generated `.gcode.3mf` for A1 mini handoff metadata and prints the exact Bambu Studio open command.
 - Keeps private photos, printer credentials, and generated meshes out of git.
 - Refuses to pretend the printer is safe to automate blindly: v1 stops at reviewable files and command plans.
@@ -63,6 +64,14 @@ uv run bambu sync-artifacts projects/<slug> --outputs-root outputs
 
 That writes STEP/STL files locally, records artifact hashes, and reports whether the build123d bounding box fits the A1 mini volume. It does not slice or print.
 
+The stronger CAD review gate is:
+
+```bash
+uv run python tools/review_3d.py projects/<slug>
+```
+
+That regenerates STEP/STL, runs the STEP through FreeCAD console mode for shape validity, solids, bounding box, volume, tessellation, and OpenCASCADE geometry checks, then renders Blender preview PNGs if Blender is installed. It never contacts Bambu Studio or the printer.
+
 ## Python Runtime And External Tools
 
 This repo is pinned to Python 3.12 through `.python-version` because build123d's current CAD stack is not available for every newer Python runtime. Use `uv run ...` for repo commands so the correct environment is used.
@@ -76,9 +85,10 @@ Python dependencies include:
 External tools are optional but useful:
 
 - **OpenSCAD**: exports `.scad` to `.stl`, `.3mf`, or `.png`.
+- **FreeCAD**: headless STEP/BRep inspection through `/Applications/FreeCAD.app/Contents/MacOS/FreeCAD -c`.
 - **Bambu Studio**: slices and exports `.gcode.3mf` for Bambu printers.
 - **OrcaSlicer**: alternate slicer CLI.
-- **Blender**: future sculpting/mesh repair lane for more organic figurines.
+- **Blender**: preview rendering, and later sculpting/mesh repair for more organic figurines.
 
 On Mike's Mac, the verified toolchain is:
 
@@ -86,6 +96,7 @@ On Mike's Mac, the verified toolchain is:
 - Bambu Studio 02.07.01.57
 - OrcaSlicer 2.3.2
 - Blender 5.1.2
+- FreeCAD 1.1.1
 
 Run:
 
@@ -140,6 +151,14 @@ The example creates two simplified soccer-supporter figures with Brazil-inspired
 World Cup neighbors v2 is the first build123d learning pass for a personal figurine scene. The active source lives in `projects/world-cup-neighbors/source/model.py`, with project-specific notes in `projects/world-cup-neighbors/source/README.md`.
 
 Reusable lessons are captured in `docs/learning/build123d-figurine-workflow.md`: chunky attached face cues, structural scene props, low-relief soccer details, and the safe export-review loop before slicing or printing.
+
+Current v2 CAD review command:
+
+```bash
+uv run python tools/review_3d.py projects/world-cup-neighbors --json outputs/review/world-cup-neighbors/review-report.json
+```
+
+FreeCAD can report a model as valid and closed while still finding deeper geometry-check warnings. Treat those warnings as design cleanup input before printing the next revision.
 
 ## Public Repo Safety
 

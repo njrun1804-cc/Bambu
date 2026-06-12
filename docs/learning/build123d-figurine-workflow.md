@@ -58,3 +58,27 @@ Do not use `@dataclass` in project-local model files until `bambu.cad` changes i
 6. Open the generated STL or 3MF in Bambu Studio and inspect supports, scale, filament, plate side, and first layer before any print.
 
 Generated STL, STEP, 3MF, G-code, preview images, printer credentials, and private photos stay out of git.
+
+## FreeCAD Review Lessons
+
+FreeCAD is the CAD inspection layer, not the source of truth. Keep build123d Python as source, export STEP/STL, then use FreeCAD to inspect the STEP.
+
+On Mike's Mac, use the app bundle's console mode:
+
+```bash
+/Applications/FreeCAD.app/Contents/MacOS/FreeCAD -c /absolute/path/to/tools/freecad_review.py --pass /absolute/path/to/model.step /absolute/path/to/review.json
+```
+
+Do not rely on `FreeCADCmd`; the installed app bundle may not include it. Do not import FreeCAD modules from ordinary system Python. Use FreeCAD's own executable so its OpenCASCADE and Python linkage stay coherent.
+
+Practical harness notes:
+
+- pass absolute script and artifact paths;
+- isolate FreeCAD runtime state under `.freecad-runtime/`;
+- scrub the subprocess environment because the FreeCAD wrapper can print environment setup;
+- support both `--pass` arguments and `FREECAD_INPUT_STEP` / `FREECAD_OUTPUT_JSON` env vars;
+- call the review script unconditionally, because FreeCAD console mode may not set `__name__ == "__main__"`;
+- use `CenterOfMass` when available and fall back to `CenterOfGravity`;
+- keep FreeCAD inspection separate from GUI viewing.
+
+Interpretation matters: FreeCAD may report a STEP as valid and closed while `shape.check(True)` still reports OpenCASCADE self-intersection warnings. That is useful design feedback, not a reason to hide the report. Preserve the JSON and treat geometry-check warnings as cleanup input before printing.
