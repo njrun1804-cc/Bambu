@@ -24,3 +24,9 @@ uv run bambu handoff
 `handoff` checks the generated `.gcode.3mf` for the A1 mini, PLA Basic, Textured PEI, and A1M standard process markers, then prints the Bambu Studio open command. It still stops before the physical print.
 
 The generated OpenSCAD uses raised jersey panels and numbers as paint guides. It does not include official Brazil federation marks or private photos.
+
+The current quality pass uses a shared 118 x 62 mm display base, two stylized figures with distinct height/build/hair/glasses/bag cues, and A1-mini-safe raised details for a 0.4 mm nozzle. To render a preview:
+
+```bash
+openscad -o outputs/world-cup-neighbors-preview.png --imgsize=1600,1200 --viewall --autocenter --camera=0,-90,60,65,0,0,220 outputs/world-cup-neighbors.scad
+```

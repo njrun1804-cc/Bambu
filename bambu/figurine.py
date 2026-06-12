@@ -35,7 +35,8 @@ def generate_scad(scene: Scene) -> str:
         raise ValueError("Scene must include at least one figurine.")
 
     parts = [_header(scene.title), _modules()]
-    spacing = 42
+    parts.append('shared_watch_party_base(label="BRAZIL WATCH PARTY");')
+    spacing = 52
     start = -spacing * (len(scene.figures) - 1) / 2
     for index, figure in enumerate(scene.figures):
         x = start + index * spacing
@@ -48,8 +49,10 @@ def _header(title: str) -> str:
         f"""
         // {title}
         // Brazil-inspired watch-party figurines.
+        // A1 mini display-safe: 180x180x180 build volume, 0.4mm nozzle, PLA Basic, Textured PEI Plate.
         // Generated for single-material printing; paint jersey panels yellow/green/blue after printing.
-        $fn = 48;
+        // minimum raised detail target: 0.8mm
+        $fn = 64;
         """
     ).strip()
 
@@ -57,55 +60,122 @@ def _header(title: str) -> str:
 def _modules() -> str:
     return dedent(
         """
-        module rounded_body(height=42, width=18, depth=10) {
+        module rounded_capsule(height=42, width=18, depth=10) {
           hull() {
-            translate([0, 0, 4]) sphere(r=width/2);
-            translate([0, 0, height]) scale([0.82, 0.55, 1]) sphere(r=width/2);
+            translate([0, 0, 4]) scale([1, depth/width, 0.58]) sphere(r=width/2);
+            translate([0, 0, height]) scale([0.78, depth/width, 0.9]) sphere(r=width/2);
           }
         }
 
-        module head_with_hair(hair_note="short hair", glasses=false, sunglasses=false) {
-          translate([0, 0, 57]) sphere(r=8);
-          translate([0, -0.6, 64]) scale([1.05, 0.75, 0.35]) sphere(r=8);
+        module rounded_plate(width=112, depth=58, height=4, radius=12) {
+          hull() {
+            translate([-width/2+radius, -depth/2+radius, 0]) cylinder(h=height, r=radius);
+            translate([ width/2-radius, -depth/2+radius, 0]) cylinder(h=height, r=radius);
+            translate([-width/2+radius,  depth/2-radius, 0]) cylinder(h=height, r=radius);
+            translate([ width/2-radius,  depth/2-radius, 0]) cylinder(h=height, r=radius);
+          }
+        }
+
+        module shared_watch_party_base(label="BRAZIL WATCH PARTY") {
+          // Wide, low shared base improves first-layer adhesion on the Textured PEI Plate.
+          rounded_plate(width=118, depth=62, height=4, radius=14);
+          translate([0, -28.8, 4.05]) cube([102, 2.4, 1.2], center=true);
+          translate([0, -24.2, 4.2])
+            linear_extrude(height=0.9) text(label, size=5.3, halign="center", valign="center");
+          translate([-40, 20, 4.1]) cylinder(h=1.1, r=5.5);
+          translate([40, 20, 4.1]) cylinder(h=1.1, r=5.5);
+        }
+
+        module head_shape(head_radius=7.8) {
+          translate([0, 0, 58]) scale([0.92, 0.82, 1.08]) sphere(r=head_radius);
+          translate([0, -6.8, 57.4]) scale([0.50, 0.18, 0.32]) sphere(r=head_radius);
+          translate([-2.8, -7.2, 56]) sphere(r=0.85);
+          translate([2.8, -7.2, 56]) sphere(r=0.85);
+          translate([0, -7.7, 53.8]) rotate([90, 0, 0]) cylinder(h=0.9, r=1.35);
+        }
+
+        module eyewear(glasses=false, sunglasses=false) {
           if (glasses || sunglasses) {
-            translate([-3.2, -7.4, 58.5]) cube([4.2, 1.2, 1.2], center=true);
-            translate([3.2, -7.4, 58.5]) cube([4.2, 1.2, 1.2], center=true);
-            translate([0, -7.4, 58.5]) cube([2.2, 0.9, 0.8], center=true);
+            lens_h = sunglasses ? 2.2 : 1.4;
+            translate([-3.2, -7.9, 58.1]) cube([4.5, 1.1, lens_h], center=true);
+            translate([3.2, -7.9, 58.1]) cube([4.5, 1.1, lens_h], center=true);
+            translate([0, -7.95, 58.1]) cube([2.1, 0.9, 0.8], center=true);
+            translate([-6.4, -6.9, 58]) rotate([0, 0, 17]) cube([3.3, 0.8, 0.8], center=true);
+            translate([6.4, -6.9, 58]) rotate([0, 0, -17]) cube([3.3, 0.8, 0.8], center=true);
           }
         }
 
-        module brazil_jersey(number_text="10") {
-          // Raised panels are paint guides: yellow shirt, green trim, blue number.
-          translate([0, -8.7, 36]) cube([17, 1.4, 20], center=true);
-          translate([0, -9.6, 42]) cube([12, 1.2, 2], center=true);
-          translate([0, -9.8, 34]) linear_extrude(height=1.1) text(number_text, size=7, halign="center", valign="center");
+        module short_salt_pepper_hair() {
+          translate([0, 0, 64.2]) scale([1.02, 0.84, 0.38]) sphere(r=7.6);
+          for (x=[-4.8,-2.4,0,2.4,4.8]) {
+            translate([x, -5.6, 62.7]) rotate([18, 0, x*2]) cylinder(h=3.2, r=0.9, center=true);
+          }
         }
 
-        module arms(height=40) {
-          translate([-13, 0, 34]) rotate([0, 12, 6]) cylinder(h=26, r=2.6, center=true);
-          translate([13, 0, 34]) rotate([0, -12, -6]) cylinder(h=26, r=2.6, center=true);
+        module swept_light_hair_with_clip() {
+          translate([0, 0.2, 63.2]) scale([1.18, 0.92, 0.48]) sphere(r=7.8);
+          translate([-5.6, -3.2, 61.0]) rotate([0, 22, -20]) cylinder(h=8.5, r=1.15, center=true);
+          translate([5.4, -2.0, 61.2]) rotate([0, -18, 20]) cylinder(h=7.0, r=1.1, center=true);
+          translate([7.1, -4.9, 60.8]) cube([4.0, 1.2, 1.8], center=true);
         }
 
-        module legs() {
-          translate([-4.5, 0, 11]) cylinder(h=22, r=3.2, center=true);
-          translate([4.5, 0, 11]) cylinder(h=22, r=3.2, center=true);
-          translate([-4.5, -3, 0.9]) cube([8, 14, 2], center=true);
-          translate([4.5, -3, 0.9]) cube([8, 14, 2], center=true);
+        module jersey_paint_guides(number_text="10", body_width=18) {
+          // Raised guides are thick enough to paint and to survive a 0.4mm nozzle.
+          translate([0, -9.35, 37]) cube([body_width*0.88, 1.2, 20], center=true);
+          translate([0, -10.05, 47.4]) cube([body_width*0.72, 1.1, 2.2], center=true);
+          translate([-body_width*0.31, -10.1, 38.3]) cube([1.6, 1.1, 15.5], center=true);
+          translate([ body_width*0.31, -10.1, 38.3]) cube([1.6, 1.1, 15.5], center=true);
+          translate([0, -10.6, 35.2]) rotate([90, 0, 0])
+            linear_extrude(height=1.0) text(number_text, size=8.2, halign="center", valign="center");
         }
 
-        module base(label="figure") {
-          translate([0, 0, -1.5]) cylinder(h=3, r=17);
-          translate([0, -15.5, 0.2]) linear_extrude(height=0.9) text(label, size=3.5, halign="center", valign="center");
+        module supportless_pose(body_width=18, body_depth=11, arm_style="relaxed") {
+          // Arms stay close to the body to avoid long unsupported overhangs.
+          translate([-body_width*0.63, -0.7, 35]) rotate([0, 10, 6]) cylinder(h=27, r=2.45, center=true);
+          translate([ body_width*0.63, -0.7, 35]) rotate([0, -10, -6]) cylinder(h=27, r=2.45, center=true);
+          translate([-body_width*0.64, -4.0, 23.2]) sphere(r=2.6);
+          translate([ body_width*0.64, -4.0, 23.2]) sphere(r=2.6);
         }
 
-        module figurine(label="figure", scale_factor=1, number_text="10", glasses=false, sunglasses=false) {
+        module crossbody_bag(body_width=20) {
+          translate([-4, -10.5, 39.5]) rotate([0, 0, -26]) cube([2.1, 1.2, 27], center=true);
+          translate([8.5, -11.0, 27.5]) scale([0.86, 0.25, 1.08]) sphere(r=5.2);
+          translate([8.5, -13.0, 27.5]) cube([5.8, 1.0, 5.8], center=true);
+        }
+
+        module legs_and_shoes(body_width=18, stance=1) {
+          translate([-body_width*0.22, 0, 14]) rotate([0, 0, 2*stance]) cylinder(h=24, r=3.2, center=true);
+          translate([ body_width*0.22, 0, 14]) rotate([0, 0, -2*stance]) cylinder(h=24, r=3.2, center=true);
+          translate([-body_width*0.22, -4, 2.3]) cube([8.8, 15, 3.3], center=true);
+          translate([ body_width*0.22, -4, 2.3]) cube([8.8, 15, 3.3], center=true);
+        }
+
+        module figure_core(body_width=18, body_depth=11, height=68, number_text="10") {
+          legs_and_shoes(body_width=body_width);
+          translate([0, 0, 25]) rounded_capsule(height=27, width=body_width, depth=body_depth);
+          jersey_paint_guides(number_text=number_text, body_width=body_width);
+          supportless_pose(body_width=body_width, body_depth=body_depth);
+          head_shape(head_radius=7.7);
+        }
+
+        module person_specific_features(profile="generic", body_width=18, glasses=false, sunglasses=false) {
+          if (profile == "tall_neighbor") {
+            short_salt_pepper_hair();
+            eyewear(glasses=true, sunglasses=false);
+            translate([10.9, -4.6, 26.6]) cylinder(h=1.5, r=2.0, center=true);
+          } else if (profile == "smiling_neighbor") {
+            swept_light_hair_with_clip();
+            eyewear(glasses=false, sunglasses=true);
+            crossbody_bag(body_width=body_width);
+          } else {
+            eyewear(glasses=glasses, sunglasses=sunglasses);
+          }
+        }
+
+        module figurine(label="figure", scale_factor=1, number_text="10", glasses=false, sunglasses=false, profile="generic", body_width=18, body_depth=11) {
           scale([scale_factor, scale_factor, scale_factor]) {
-            base(label);
-            legs();
-            rounded_body();
-            brazil_jersey(number_text);
-            arms();
-            head_with_hair(glasses=glasses, sunglasses=sunglasses);
+            figure_core(body_width=body_width, body_depth=body_depth, number_text=number_text);
+            person_specific_features(profile=profile, body_width=body_width, glasses=glasses, sunglasses=sunglasses);
           }
         }
         """
@@ -118,12 +188,14 @@ def _figure_call(figure: Figurine, x: float) -> str:
     accessories = {slug(item) for item in figure.accessories}
     glasses = "true" if "glasses" in accessories else "false"
     sunglasses = "true" if "sunglasses" in accessories else "false"
+    profile = label if label in {"tall_neighbor", "smiling_neighbor"} else "generic"
+    body_width = 16.5 if figure.body_shape == "slim" else 21.0 if figure.body_shape == "curvy" else 18.0
+    body_depth = 10.5 if figure.body_shape == "slim" else 12.4 if figure.body_shape == "curvy" else 11.0
     number_symbol = f"number_{slug(figure.jersey_number)}"
     return dedent(
         f"""
         // {figure.name}: {figure.body_shape}; {figure.hair}; {', '.join(figure.accessories) or 'no accessories'}
         {number_symbol} = "{figure.jersey_number}";
-        translate([{x:.1f}, 0, 1.5]) figurine(label="{label}", scale_factor={scale_factor:.3f}, number_text={number_symbol}, glasses={glasses}, sunglasses={sunglasses});
+        translate([{x:.1f}, 0, 4.0]) figurine(label="{label}", scale_factor={scale_factor:.3f}, number_text={number_symbol}, glasses={glasses}, sunglasses={sunglasses}, profile="{profile}", body_width={body_width:.1f}, body_depth={body_depth:.1f});
         """
     ).strip()
-

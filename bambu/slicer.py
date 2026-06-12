@@ -76,7 +76,9 @@ def build_slice_plan(request: SliceRequest) -> SlicePlan:
     checklist = [
         "Review supports, overhangs, and first-layer adhesion in the slicer before printing.",
         "Confirm the printer profile is Bambu Lab A1 mini and the bed is Textured PEI Plate.",
-        "Scale the model down before slicing if the estimated print time is too long.",
+        "Use A1 mini auto bed leveling and flow calibration before the first real print of this model.",
+        "Use AMS lite color assignment only if the printer is actually connected with AMS lite; otherwise print PLA Basic single-color and paint the raised guides.",
+        "Keep the 118mm shared base centered on the Textured PEI Plate for adhesion and clearance.",
         "Use manual approval before sending any job to the printer.",
     ]
     return SlicePlan(tool=tool, command=command, checklist=checklist)

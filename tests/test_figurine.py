@@ -37,6 +37,23 @@ class FigurineTests(unittest.TestCase):
         self.assertIn("number_9", scad)
         self.assertIn("glasses", scad)
 
+    def test_generates_display_quality_neighbor_cues_for_a1_mini(self):
+        from bambu.cli import default_world_cup_scene
+        from bambu.figurine import generate_scad
+
+        scad = generate_scad(default_world_cup_scene())
+
+        self.assertIn("A1 mini display-safe", scad)
+        self.assertIn("module shared_watch_party_base", scad)
+        self.assertIn("module jersey_paint_guides", scad)
+        self.assertIn("module short_salt_pepper_hair", scad)
+        self.assertIn("module swept_light_hair_with_clip", scad)
+        self.assertIn("module crossbody_bag", scad)
+        self.assertIn("supportless_pose", scad)
+        self.assertIn("minimum raised detail target: 0.8mm", scad)
+        self.assertIn("translate([-26.0", scad)
+        self.assertIn("translate([26.0", scad)
+
     def test_rejects_empty_scene(self):
         from bambu.figurine import Scene, generate_scad
 
@@ -46,4 +63,3 @@ class FigurineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -21,6 +21,11 @@ class SlicerTests(unittest.TestCase):
         self.assertIn("Textured PEI Plate", " ".join(plan.command))
         self.assertEqual(plan.command[-1], "outputs/world-cup-neighbors.stl")
         self.assertIn("Review supports", plan.checklist[0])
+        checklist = " ".join(plan.checklist)
+        self.assertIn("A1 mini", checklist)
+        self.assertIn("auto bed leveling", checklist.lower())
+        self.assertIn("AMS lite", checklist)
+        self.assertIn("Textured PEI", checklist)
 
     def test_orca_slice_plan_can_be_selected(self):
         from bambu.slicer import SliceRequest, build_slice_plan
