@@ -1,0 +1,68 @@
+schema_version: 1
+people:
+  - id: dan
+    name: Dan
+    role: left_figurine
+    target_height_mm: 54
+    head_mm: {width: 19.0, height: 21.0}
+    torso_mm: {width: 17.0, height: 17.0}
+    silhouette:
+      relative_height: taller
+      build: slim
+      pose: right_arm_raised_fan_cheer
+    likeness_cues:
+      - short wavy gray hair, slightly receded, swept back
+      - rectangular sunglasses ridge
+      - tall slim stance
+      - broad smile
+    print_safe_face:
+      glasses: fused_raised_rectangular_ridge
+      brows: raised_broad_bars
+      nose: raised_vertical_ridge
+      smile: engraved_broad_arc
+      cheeks: raised_soft_masses
+    hair:
+      style: solid swept cap, receded hairline
+      strand_cues: engraved_shallow_grooves
+    clothing:
+      jersey_panel: raised_paint_guide
+      number: "10"
+      accent_strategy: optional_paint_after_single_green_print
+  - id: carrie
+    name: Carrie
+    role: right_figurine
+    target_height_mm: 48
+    head_mm: {width: 19.5, height: 20.0}
+    torso_mm: {width: 18.5, height: 15.0}
+    silhouette:
+      relative_height: shorter
+      build: rounder
+      pose: left_arm_raised_wave
+    likeness_cues:
+      - light reddish bob-style solid hair mass
+      - round sunglasses ridge, slightly oversized
+      - rounder silhouette, big cheeks
+      - warm smile
+    print_safe_face:
+      glasses: fused_raised_round_ridge
+      brows: raised_broad_bars
+      nose: raised_vertical_ridge
+      smile: engraved_broad_arc
+      cheeks: raised_soft_masses
+    hair:
+      style: solid bob mass to jaw with side part
+      strand_cues: engraved_shallow_grooves
+    clothing:
+      jersey_panel: raised_paint_guide
+      number: "9"
+      accent_strategy: optional_paint_after_single_green_print
+shared_rules:
+  face_style: rounded chibi heads, broad low-relief landmarks
+  no_photorealism: true
+  heads_must_differ: dan boxy-oval vs carrie rounder oval
+  minimum_face_feature_width_mm: 1.2
+  forbid:
+    - separate eyeglass frames
+    - thin fingers
+    - hair strands as free geometry
+    - loose hand props

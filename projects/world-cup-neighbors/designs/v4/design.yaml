@@ -1,0 +1,47 @@
+schema_version: 1
+design_id: world-cup-neighbors-v4
+revision: v4
+agentic_pipeline:
+  source_of_truth: authored_cad_with_spec_gates
+  primary_operator: claude_agent
+  human_role: approve_renders_then_slice_review_then_manual_print
+  cad_source: source/v4/model.py
+  contract: >
+    These specs are requirements and acceptance gates. The build123d source is
+    hand-authored parametric code whose PARAMS cite these numbers. The model is
+    validated against the specs after building; the specs are not compiled.
+intent:
+  gift_context: Brazil watch-party figurines for Dan and Carrie.
+  emotional_target: cute, recognizable, playful, and print-safe.
+  design_direction: >
+    ChatGPT v3b revised design guide: Option C soccer-fan bodies with Option A
+    rounded readable chibi heads. Single fused solid, supportless, reads in
+    one color.
+  likeness_strategy: recognizable caricature cues from private photos, not portrait sculpture.
+  first_pass_goal: single-color green PLA print that reads without paint.
+reference_inputs:
+  revised_design_guide:
+    path: references/ai-concepts/6ba80d93-b4b2-49ff-a608-3da9876d2053.png
+    role: primary proportion + relief + print-safety source (v3b revised guide)
+  visual_target:
+    path: references/ai-concepts/68869cef-6756-47e8-8d5f-e3901f822af1.png
+    role: scene balance, pose, and personality target; colors informational only
+  concept_sheet:
+    path: references/ai-concepts/c78ef332-7597-4921-b64a-54a9be9cce80.png
+    role: original Option A-D exploration
+  photos_manifest:
+    path: references/manifest.yaml
+    role: private likeness photos stay local; never commit
+must_preserve:
+  - DAN star CARRIE raised lettering on base front
+  - soccer goal backdrop framing, never covering, the figures
+  - soccer ball fused to base
+  - A1 mini fit and supportless print orientation
+must_change_from_v3b_attempt:
+  - export exactly one fused solid; no multi-solid compounds
+  - engraved smile lines and panel cues via real boolean subtraction
+  - base lettering via build123d Text, not pixel-grid boxes
+  - render the full required view set, including per-figure face closeups
+failure_lessons:
+  - v3b compound of overlapping solids failed FreeCAD validity; fuse everything
+  - v001 tree supports scarred small details; v4 must need no supports

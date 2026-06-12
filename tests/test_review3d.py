@@ -122,5 +122,58 @@ class Review3dTests(unittest.TestCase):
         self.assertEqual(report["freecad"]["available"], False)
 
 
+    def test_inspect_stl_mesh_accepts_watertight_tetrahedron(self):
+        import struct
+
+        from bambu.review3d import inspect_stl_mesh
+
+        vertices = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1)]
+        facets = [(0, 2, 1), (0, 1, 3), (1, 2, 3), (0, 3, 2)]
+        with tempfile.TemporaryDirectory() as tmp:
+            stl = Path(tmp) / "tet.stl"
+            with open(stl, "wb") as handle:
+                handle.write(b"\0" * 80)
+                handle.write(struct.pack("<I", len(facets)))
+                for a, b, c in facets:
+                    handle.write(struct.pack("<3f", 0, 0, 0))
+                    for idx in (a, b, c):
+                        handle.write(struct.pack("<3f", *vertices[idx]))
+                    handle.write(struct.pack("<H", 0))
+            report = inspect_stl_mesh(stl)
+
+        self.assertTrue(report["watertight_manifold"])
+        self.assertEqual(report["open_edges"], 0)
+        self.assertEqual(report["non_manifold_edges"], 0)
+
+    def test_inspect_stl_mesh_flags_open_surface(self):
+        import struct
+
+        from bambu.review3d import inspect_stl_mesh
+
+        vertices = [(0, 0, 0), (1, 0, 0), (0, 1, 0)]
+        with tempfile.TemporaryDirectory() as tmp:
+            stl = Path(tmp) / "tri.stl"
+            with open(stl, "wb") as handle:
+                handle.write(b"\0" * 80)
+                handle.write(struct.pack("<I", 1))
+                handle.write(struct.pack("<3f", 0, 0, 0))
+                for v in vertices:
+                    handle.write(struct.pack("<3f", *v))
+                handle.write(struct.pack("<H", 0))
+            report = inspect_stl_mesh(stl)
+
+        self.assertFalse(report["watertight_manifold"])
+        self.assertEqual(report["open_edges"], 3)
+
+    def test_inspect_stl_mesh_reports_missing_file(self):
+        from bambu.review3d import inspect_stl_mesh
+
+        report = inspect_stl_mesh(Path("/nonexistent/model.stl"))
+
+        self.assertFalse(report["watertight_manifold"])
+        self.assertIn("reason", report)
+
+
+
 if __name__ == "__main__":
     unittest.main()

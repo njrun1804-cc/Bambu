@@ -1,0 +1,41 @@
+schema_version: 1
+printer:
+  model: Bambu Lab A1 mini
+  build_volume_mm: {x: 180, y: 180, z: 180}
+  nozzle_mm: 0.4
+  printer_contact_allowed: false
+  printer_contact_policy: manual_only_after_human_slicer_review
+  target_plate: Bambu textured PEI
+  material_first_pass: Bambu PLA Basic green
+target_model:
+  max_size_mm: {x: 125, y: 70, z: 70}
+  base_size_mm: {x: 125, y: 68, z: 10}
+  base_depth_note: 68 leaves room for 1.8 mm raised front lettering inside the 70 mm budget
+  print_orientation: flat_on_base
+  figure_height_mm: {dan: 52-56, carrie: 46-50}
+geometry_contract:
+  single_fused_solid: true
+  engraves_via_boolean_subtraction: true
+  no_multi_solid_compounds: true
+feature_minimums:
+  raised_detail_height_mm: {min: 1.2, max: 1.8}
+  raised_detail_width_mm: 1.2
+  engraved_line_depth_mm: {min: 1.0, max: 1.2}
+  engraved_line_width_mm: 1.2
+  net_bar_mm: {min: 2.0, max: 2.4}
+  net_opening_mm: {min: 8, max: 12}
+  glasses_ridge_proud_mm: {min: 1.2, max: 1.5}
+  base_lettering_proud_mm: {min: 1.5, max: 2.0}
+  goal_post_min_mm: 4.0
+  wall_or_post_min_mm: 2.0
+support_policy:
+  supports_allowed: false
+  max_overhang_degrees: 45
+  fuse_small_parts_to_body_or_base: true
+forbid:
+  - thin separate fingers
+  - loose props
+  - floating glasses frames
+  - unsupported hair strands
+  - freestanding tiny soccer ball
+  - net bars thinner than 2.0 mm

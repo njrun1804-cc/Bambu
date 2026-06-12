@@ -1,0 +1,11 @@
+schema_version: 1
+# Blender ortho review cameras for tools/review_3d.py --views.
+# Scene frame: plate at z=0, base spans x +-62.5, figures at x = -19 (Dan)
+# and +19 (Carrie); head centers near z 52.5 / 47.5.
+views:
+  - {name: front, location: [0, -220, 40], target: [0, 0, 30], ortho_scale: 140}
+  - {name: three-quarter, location: [150, -160, 85], target: [0, 0, 30], ortho_scale: 150}
+  - {name: rear, location: [0, 220, 60], target: [0, 0, 30], ortho_scale: 145}
+  - {name: top-plate, location: [0, -8, 280], target: [0, -8, 10], ortho_scale: 150}
+  - {name: face-dan, location: [-19, -130, 56], target: [-19, -7, 52], ortho_scale: 34}
+  - {name: face-carrie, location: [19, -130, 51], target: [19, -7, 47.5], ortho_scale: 34}

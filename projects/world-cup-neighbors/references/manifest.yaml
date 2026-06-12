@@ -19,11 +19,21 @@ references:
     suggested_path: references/ai-concepts/c78ef332-7597-4921-b64a-54a9be9cce80.png
     git_policy: optional_public_safe
     role: Option C/A hybrid target for v3 CAD generation
+  - id: v3b_colored_visual_target
+    kind: ai_concept_sheet
+    suggested_path: references/ai-concepts/68869cef-6756-47e8-8d5f-e3901f822af1.png
+    git_policy: optional_public_safe
+    role: v4 scene balance, pose, and personality target; colors informational only
+  - id: v3b_revised_design_guide
+    kind: ai_concept_sheet
+    suggested_path: references/ai-concepts/6ba80d93-b4b2-49ff-a608-3da9876d2053.png
+    git_policy: optional_public_safe
+    role: primary v4 proportion, relief, and print-safety source
 agent_usage:
   first_read:
-    - projects/world-cup-neighbors/designs/v3/design.yaml
-    - projects/world-cup-neighbors/designs/v3/people.yaml
-    - projects/world-cup-neighbors/designs/v3/print_constraints.yaml
-    - projects/world-cup-neighbors/designs/v3/visual_acceptance.yaml
-    - projects/world-cup-neighbors/designs/v3/build_plan.yaml
+    - projects/world-cup-neighbors/designs/v4/design.yaml
+    - projects/world-cup-neighbors/designs/v4/people.yaml
+    - projects/world-cup-neighbors/designs/v4/print_constraints.yaml
+    - projects/world-cup-neighbors/designs/v4/visual_acceptance.yaml
+    - projects/world-cup-neighbors/designs/v4/build_plan.yaml
   never_require_human_to_manually_summarize_references: true

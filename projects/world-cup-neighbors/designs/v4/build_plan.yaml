@@ -1,0 +1,48 @@
+schema_version: 1
+cad_backend: build123d
+source_layout:
+  assembly_entrypoint: source/v4/model.py
+  authored_not_generated: true
+  generated_outputs_prefix: outputs/world-cup-neighbors-v4
+review_tools:
+  agent:
+    - FreeCAD
+    - Blender
+  manual:
+    - Shapr3D
+    - Bambu Studio
+components:
+  base:
+    type: rounded_rectangle_slab
+    size_mm: {x: 125, y: 70, z: 10}
+    includes:
+      - raised DAN star CARRIE lettering via build123d Text on front face
+      - filleted top edge
+  goal:
+    type: structural_backdrop
+    placement: rear, framing both figures, never covering faces
+    constraints: {post_mm: 5.0, net_bar_mm: 2.2, net_opening_mm: 9}
+  soccer_ball:
+    type: fused_ball
+    placement: front_center_between_figures
+    diameter_mm: 16
+    detail: engraved shallow panel lines only
+  figures:
+    type: toy_caricature_pair
+    spec: people.yaml
+    construction: each figure fused in its own BuildPart, then fused into scene
+generation_sequence:
+  - validate design-check gate for v4
+  - author source/v4/model.py against these specs
+  - export STEP and STL as one fused solid
+  - run FreeCAD geometry review until valid, closed, zero warnings
+  - render Blender required views
+  - human approves renders (and optionally STEP in Shapr3D)
+  - slice with Bambu Studio CLI to .gcode.3mf
+  - human opens sliced project, reviews, and prints manually
+next_agent_actions:
+  - author build123d source against designs/v4/*.yaml
+  - export world-cup-neighbors-v4 STEP/STL as a single fused solid
+  - run FreeCAD geometry review before any slicer work
+  - render the full v4 view set and ask for human approval
+  - keep printer contact disabled; printing stays manual

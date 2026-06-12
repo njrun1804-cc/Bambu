@@ -57,8 +57,11 @@ def validate_design_spec(spec: dict[str, Any]) -> dict[str, Any]:
     if not design.get("intent"):
         errors.append("design.intent is required")
     source_of_truth = design.get("agentic_pipeline", {}).get("source_of_truth")
-    if source_of_truth != "structured_specs":
-        errors.append("design.agentic_pipeline.source_of_truth must be structured_specs")
+    if source_of_truth not in ("structured_specs", "authored_cad_with_spec_gates"):
+        errors.append(
+            "design.agentic_pipeline.source_of_truth must be structured_specs"
+            " or authored_cad_with_spec_gates"
+        )
 
     printer = constraints.get("printer", {})
     if printer.get("model") != "Bambu Lab A1 mini":
@@ -91,11 +94,12 @@ def validate_design_spec(spec: dict[str, Any]) -> dict[str, Any]:
     if "Bambu Studio" not in manual_tools:
         errors.append("build_plan.review_tools.manual must include Bambu Studio")
 
+    revision = spec.get("revision", "v3")
     next_actions = build_plan.get("next_agent_actions", [])
     if not next_actions:
         errors.append("build_plan.next_agent_actions is required")
-    if "generate build123d components from designs/v3/*.yaml" not in next_actions:
-        warnings.append("next actions should start by generating build123d components from designs/v3/*.yaml")
+    if not any(f"designs/{revision}/*.yaml" in action for action in next_actions):
+        warnings.append(f"next actions should reference build123d work against designs/{revision}/*.yaml")
 
     gates = {
         "structured_specs_present": not spec.get("missing_files"),

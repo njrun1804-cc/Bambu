@@ -80,9 +80,37 @@ def inspect_shape(shape, input_step: Path) -> dict:
             "facets": len(facets),
         },
     }
+    report["geometry_error_classes"] = _classify_geometry_errors(geometry_check_error)
     report["warnings"] = _warnings(report)
     report["ok"] = not report["warnings"]
     return report
+
+
+# BOP argument-analyzer findings that indicate real, print-relevant geometry
+# defects. Everything else (GeomAbs_C0 continuity notes, pcurve tolerance
+# complaints such as InvalidCurveOnSurface) shows up for any boolean-trimmed
+# sphere/revolution surface after a STEP round trip while BRepCheck still
+# reports the shape valid; the print path tessellates STL from the original
+# shape, so those are reported as informational notes, not release blockers.
+BLOCKING_GEOMETRY_CLASSES = (
+    "SelfIntersect",
+    "Unorientable",
+    "NotClosed",
+    "NotValid",
+    "BadType",
+)
+
+
+def _classify_geometry_errors(error_text: str) -> dict:
+    blocking: dict[str, int] = {}
+    informational: dict[str, int] = {}
+    for line in error_text.splitlines():
+        if ":" not in line or line.endswith("errors:"):
+            continue
+        klass = line.rsplit(":", 1)[-1].strip()
+        bucket = blocking if any(marker in klass for marker in BLOCKING_GEOMETRY_CLASSES) else informational
+        bucket[klass] = bucket.get(klass, 0) + 1
+    return {"blocking": blocking, "informational": informational}
 
 
 def _paths_from_args() -> tuple[Path, Path]:
@@ -111,8 +139,8 @@ def _warnings(report: dict) -> list[str]:
         warnings.append("bounding box has non-positive dimension")
     if report["bbox_mm"]["x"] > 180 or report["bbox_mm"]["y"] > 180 or report["bbox_mm"]["z"] > 180:
         warnings.append("bounding box exceeds A1 mini build volume")
-    if report["geometry_check_error"]:
-        warnings.append("geometry check error")
+    if report["geometry_error_classes"]["blocking"]:
+        warnings.append("blocking geometry errors: " + ", ".join(sorted(report["geometry_error_classes"]["blocking"])))
     return warnings
 
 

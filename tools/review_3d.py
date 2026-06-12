@@ -16,14 +16,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--outputs-root", type=Path, default=Path("outputs"))
     parser.add_argument("--no-render", action="store_true", help="Skip Blender preview rendering.")
     parser.add_argument("--json", type=Path, default=None, help="Optional report JSON path.")
+    parser.add_argument("--source-file", type=Path, default=None, help="Alternate build123d source file.")
+    parser.add_argument("--output-slug", default=None, help="Alternate output artifact name.")
+    parser.add_argument("--views", type=Path, default=None, help="YAML file with Blender review views.")
     args = parser.parse_args(argv)
 
-    report = review_project_3d(args.project, outputs_root=args.outputs_root, render=not args.no_render)
+    views = None
+    if args.views:
+        import yaml
+
+        views = yaml.safe_load(args.views.read_text())["views"]
+
+    report = review_project_3d(
+        args.project,
+        outputs_root=args.outputs_root,
+        render=not args.no_render,
+        source_file=args.source_file,
+        output_slug=args.output_slug,
+        views=views,
+    )
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(report, indent=2) + "\n")
     print_summary(report)
-    return 0 if report.get("fits_a1_mini") and not report.get("freecad", {}).get("warnings") else 1
+    gates = (
+        report.get("fits_a1_mini"),
+        not report.get("freecad", {}).get("warnings"),
+        report.get("mesh", {}).get("watertight_manifold"),
+    )
+    return 0 if all(gates) else 1
 
 
 def print_summary(report: dict) -> None:
@@ -47,8 +68,22 @@ def print_summary(report: dict) -> None:
         print(f"volume: {freecad.get('volume')}")
         warnings = freecad.get("warnings") or []
         print(f"warnings: {warnings if warnings else 'none'}")
+        classes = freecad.get("geometry_error_classes", {})
+        if classes:
+            print(f"blocking geometry errors: {classes.get('blocking') or 'none'}")
+            print(f"informational geometry notes: {classes.get('informational') or 'none'}")
     else:
         print(f"reason: {freecad.get('reason', 'unknown')}")
+    mesh = report.get("mesh", {})
+    if mesh:
+        print()
+        print("STL mesh")
+        print("--------")
+        print(f"facets: {mesh.get('facets')}")
+        print(f"open edges: {mesh.get('open_edges')}")
+        print(f"non-manifold edges: {mesh.get('non_manifold_edges')}")
+        print(f"degenerate facets: {mesh.get('degenerate_facets')} (tolerated; slicers discard zero-area triangles)")
+        print(f"watertight manifold: {'yes' if mesh.get('watertight_manifold') else 'no'}")
     blender = report.get("blender", {})
     print()
     print("Blender previews")

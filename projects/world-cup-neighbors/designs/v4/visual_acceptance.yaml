@@ -1,0 +1,41 @@
+schema_version: 1
+required_views:
+  - front
+  - three_quarter
+  - rear
+  - top_plate
+  - face_closeup
+  - face_closeup_dan
+  - face_closeup_carrie
+human_review_questions:
+  - Do Dan and Carrie read as people within two seconds?
+  - Can Dan and Carrie be distinguished without reading the labels?
+  - Do the faces have charm (not blocky, not creepy) in the closeups?
+  - Does the scene read in single green PLA with no paint?
+  - Does any visible feature look too thin or unsupported for a 0.4 mm nozzle?
+agent_visual_checks:
+  compare_against:
+    - references/ai-concepts/6ba80d93-b4b2-49ff-a608-3da9876d2053.png
+    - references/ai-concepts/68869cef-6756-47e8-8d5f-e3901f822af1.png
+  required_render_outputs:
+    - outputs/review/world-cup-neighbors-v4/front.png
+    - outputs/review/world-cup-neighbors-v4/three-quarter.png
+    - outputs/review/world-cup-neighbors-v4/rear.png
+    - outputs/review/world-cup-neighbors-v4/top-plate.png
+    - outputs/review/world-cup-neighbors-v4/face-dan.png
+    - outputs/review/world-cup-neighbors-v4/face-carrie.png
+acceptance_thresholds:
+  people_readability: must_pass_human_review
+  single_color_legibility: must_pass_human_review
+  freecad_validity: valid_and_closed_single_solid
+  blocking_geometry_errors: zero  # SelfIntersect, Unorientable, NotClosed, NotValid
+  stl_mesh: watertight_manifold_required
+  pcurve_continuity_notes: informational_only
+  pcurve_note_rationale: >
+    BOP InvalidCurveOnSurface/GeomAbs_C0 appear for any boolean-trimmed
+    sphere or revolution surface after a STEP round trip while BRepCheck
+    reports the shape valid; printing uses direct STL tessellation, which is
+    gated separately by the watertight/manifold mesh check.
+shapr3d_handoff:
+  artifact: outputs/world-cup-neighbors-v4.step
+  note: STEP can be opened directly in Shapr3D for human spin-around review.

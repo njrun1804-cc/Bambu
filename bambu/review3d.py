@@ -106,6 +106,54 @@ def parse_freecad_json(output: str) -> dict[str, Any]:
     return json.loads(payload)
 
 
+def inspect_stl_mesh(stl_path: Path) -> dict[str, Any]:
+    """Watertight/manifold check on a binary STL: the authoritative print-path gate.
+
+    Every edge of every non-degenerate facet must be shared by exactly two
+    facets. Zero-area facets are counted but tolerated; slicers discard them.
+    """
+
+    import struct
+    from collections import defaultdict
+
+    if not Path(stl_path).exists():
+        return {"available": False, "reason": f"STL not found: {stl_path}", "watertight_manifold": False}
+
+    with open(stl_path, "rb") as handle:
+        handle.read(80)
+        (facet_count,) = struct.unpack("<I", handle.read(4))
+        data = handle.read()
+
+    record = struct.Struct("<12fH")
+    vertex_ids: dict[tuple[float, ...], int] = {}
+    edges: dict[tuple[int, int], int] = defaultdict(int)
+    degenerate = 0
+    offset = 0
+    for _ in range(facet_count):
+        values = record.unpack_from(data, offset)
+        offset += record.size
+        ids = []
+        for start in (3, 6, 9):
+            vertex = values[start : start + 3]
+            ids.append(vertex_ids.setdefault(vertex, len(vertex_ids)))
+        if len(set(ids)) < 3:
+            degenerate += 1
+            continue
+        for u, v in ((ids[0], ids[1]), (ids[1], ids[2]), (ids[2], ids[0])):
+            edges[(min(u, v), max(u, v))] += 1
+
+    open_edges = sum(1 for count in edges.values() if count == 1)
+    non_manifold = sum(1 for count in edges.values() if count > 2)
+    return {
+        "facets": facet_count,
+        "vertices": len(vertex_ids),
+        "degenerate_facets": degenerate,
+        "open_edges": open_edges,
+        "non_manifold_edges": non_manifold,
+        "watertight_manifold": open_edges == 0 and non_manifold == 0,
+    }
+
+
 def detect_blender() -> str | None:
     """Return a usable Blender executable path if available."""
 
@@ -114,9 +162,20 @@ def detect_blender() -> str | None:
     )
 
 
-def build_blender_preview_command(*, blender: str, stl: Path, output_dir: Path) -> list[str]:
+DEFAULT_PREVIEW_VIEWS: list[dict[str, Any]] = [
+    {"name": "front", "location": [0, -220, 48], "target": [0, 0, 32], "ortho_scale": 138},
+    {"name": "front-angle", "location": [120, -190, 75], "target": [0, 0, 32], "ortho_scale": 145},
+    {"name": "rear-angle", "location": [-120, 190, 75], "target": [0, 0, 32], "ortho_scale": 145},
+]
+
+
+def build_blender_preview_command(
+    *, blender: str, stl: Path, output_dir: Path, views: list[dict[str, Any]] | None = None
+) -> list[str]:
     """Build a read-only Blender preview command for an STL."""
 
+    views = views or DEFAULT_PREVIEW_VIEWS
+    views_literal = json.dumps(views)
     script = f"""
 import bpy
 from mathutils import Vector
@@ -145,27 +204,30 @@ cam.data.type = 'ORTHO'
 def look_at(target):
     direction = Vector(target) - Vector(cam.location)
     cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
-def render(name, loc, scale):
-    cam.location = loc
-    cam.data.ortho_scale = scale
-    look_at((0, 0, 32))
-    bpy.context.scene.render.filepath = {str(output_dir)!r} + '/' + name + '.png'
+for view in {views_literal}:
+    cam.location = view['location']
+    cam.data.ortho_scale = view['ortho_scale']
+    look_at(view['target'])
+    bpy.context.scene.render.filepath = {str(output_dir)!r} + '/' + view['name'] + '.png'
     bpy.ops.render.render(write_still=True)
-render('front', (0, -220, 48), 138)
-render('front-angle', (120, -190, 75), 145)
-render('rear-angle', (-120, 190, 75), 145)
 """
     return [blender, "--background", "--python-expr", script]
 
 
-def render_blender_previews(stl: Path, output_dir: Path, *, blender: str | None = None) -> dict[str, Any]:
+def render_blender_previews(
+    stl: Path,
+    output_dir: Path,
+    *,
+    blender: str | None = None,
+    views: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Render preview PNGs through Blender if available."""
 
     executable = blender or detect_blender()
     if not executable:
         return {"available": False, "reason": "Blender not found", "paths": []}
     output_dir.mkdir(parents=True, exist_ok=True)
-    command = build_blender_preview_command(blender=executable, stl=stl, output_dir=output_dir)
+    command = build_blender_preview_command(blender=executable, stl=stl, output_dir=output_dir, views=views)
     completed = subprocess.run(command, check=False, text=True, capture_output=True)
     paths = sorted(str(path) for path in output_dir.glob("*.png"))
     return {
@@ -177,17 +239,30 @@ def render_blender_previews(stl: Path, output_dir: Path, *, blender: str | None 
     }
 
 
-def review_project_3d(project_path: Path | str, *, outputs_root: Path = Path("outputs"), render: bool = True) -> dict[str, Any]:
+def review_project_3d(
+    project_path: Path | str,
+    *,
+    outputs_root: Path = Path("outputs"),
+    render: bool = True,
+    source_file: Path | None = None,
+    output_slug: str | None = None,
+    views: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Export, inspect, render, and summarize a project without printer contact."""
 
     project = Path(project_path)
-    export = export_build123d_project(project, output_dir=outputs_root)
+    export = export_build123d_project(
+        project, output_dir=outputs_root, source_file=source_file, output_slug=output_slug
+    )
     artifacts = sync_project_artifacts(project, outputs_root=outputs_root)
     step = Path(export["step"])
     stl = Path(export["stl"])
     review_dir = outputs_root / "review" / export["project_slug"]
     freecad_report = inspect_step_with_freecad(step, review_dir / "freecad_review.json")
-    blender_report = render_blender_previews(stl, review_dir) if render else {"available": False, "paths": []}
+    mesh_report = inspect_stl_mesh(stl)
+    blender_report = (
+        render_blender_previews(stl, review_dir, views=views) if render else {"available": False, "paths": []}
+    )
     return {
         "project": export["project_slug"],
         "step": str(step),
@@ -195,6 +270,7 @@ def review_project_3d(project_path: Path | str, *, outputs_root: Path = Path("ou
         "bounding_box_mm": export["bounding_box_mm"],
         "fits_a1_mini": export["fits_a1_mini"],
         "freecad": freecad_report,
+        "mesh": mesh_report,
         "blender": blender_report,
         "artifact_count": len(artifacts.get("artifacts", [])),
         "printer_contact": False,

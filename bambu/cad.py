@@ -17,12 +17,13 @@ def export_build123d_project(
     output_dir: Path = Path("outputs"),
     source_file: Path | None = None,
     model_symbol: str = "model",
+    output_slug: str | None = None,
 ) -> dict[str, Any]:
     """Export a build123d project model to STEP and STL and record artifacts."""
 
     project_dir = Path(project_path)
     project = load_project(project_dir / "project.yaml")
-    slug = project["slug"]
+    slug = output_slug or project["slug"]
     source = source_file or project_dir / "source" / "model.py"
     model = load_build123d_model(source, model_symbol=model_symbol)
     export_step, export_stl = _build123d_exporters()

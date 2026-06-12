@@ -70,5 +70,20 @@ class DesignPipelineTests(unittest.TestCase):
         self.assertFalse(report["printer_contact_allowed"])
 
 
+    def test_world_cup_v4_specs_pass_with_authored_cad_contract(self):
+        from bambu.design_pipeline import load_design_spec, validate_design_spec
+
+        spec = load_design_spec("projects/world-cup-neighbors", revision="v4")
+        report = validate_design_spec(spec)
+
+        self.assertTrue(report["ok"], report["errors"])
+        self.assertEqual(report["design"]["source_of_truth"], "authored_cad_with_spec_gates")
+        self.assertEqual(report["warnings"], [])
+        self.assertIn("Dan", report["people"])
+        self.assertIn("Carrie", report["people"])
+        carrie = spec["files"]["people"]["people"][1]
+        self.assertEqual(carrie["clothing"]["number"], "9")
+
+
 if __name__ == "__main__":
     unittest.main()
