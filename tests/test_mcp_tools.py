@@ -124,6 +124,30 @@ class McpToolTests(unittest.TestCase):
         self.assertEqual(result["outcome"], "partial_success")
         self.assertIn("clip_gap_mm", result["measurements"])
 
+    def test_mcp_sync_artifacts_indexes_outputs(self):
+        from bambu.mcp_server import bambu_create_project, bambu_sync_artifacts
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            created = bambu_create_project("Cable clip", root=str(root / "projects"))
+            outputs = root / "outputs"
+            outputs.mkdir()
+            (outputs / "cable-clip.stl").write_text("solid clip")
+            result = bambu_sync_artifacts(created["project_dir"], outputs_root=str(outputs))
+
+        self.assertEqual(result["project_slug"], "cable-clip")
+        self.assertEqual(result["artifacts"][0]["kind"], "mesh_stl")
+
+    def test_mcp_build123d_export_delegates_export_gate(self):
+        from bambu.mcp_server import bambu_build123d_export
+
+        with patch("bambu.mcp_server.export_build123d_project") as export:
+            export.return_value = {"step": "outputs/model.step", "stl": "outputs/model.stl"}
+            result = bambu_build123d_export("projects/model", output_dir="outputs")
+
+        self.assertEqual(result["step"], "outputs/model.step")
+        export.assert_called_once()
+
 
 if __name__ == "__main__":
     unittest.main()

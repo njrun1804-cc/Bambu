@@ -15,7 +15,7 @@ from bambu.figurine import generate_scad
 from bambu.handoff import inspect_print_handoff
 from bambu.preflight import detect_tools, next_steps, serialize_report
 from bambu.pipeline import build_world_cup_prototype
-from bambu.projects import create_project, project_view, record_print_result
+from bambu.projects import create_project, project_view, record_print_result, sync_project_artifacts
 from bambu.slicer import SliceRequest, build_slice_plan
 
 
@@ -73,6 +73,24 @@ def bambu_project_view(project: str) -> dict[str, Any]:
     """Return manifest, artifact, validation, and next-action state for a project."""
 
     return project_view(Path(project))
+
+
+def bambu_sync_artifacts(
+    project: str,
+    outputs_root: str = "outputs",
+) -> dict[str, Any]:
+    """Hash and classify generated output files into the project artifact index."""
+
+    return sync_project_artifacts(Path(project), outputs_root=Path(outputs_root))
+
+
+def bambu_build123d_export(
+    project: str,
+    output_dir: str = "outputs",
+) -> dict[str, Any]:
+    """Export a build123d project model to STEP/STL without slicing or printer contact."""
+
+    return export_build123d_project(Path(project), output_dir=Path(output_dir))
 
 
 def bambu_record_print_result(
@@ -200,6 +218,12 @@ def _detected_slicer_path(slicer: str) -> str | None:
     return None
 
 
+def export_build123d_project(*args, **kwargs):
+    from bambu.cad import export_build123d_project as _export_build123d_project
+
+    return _export_build123d_project(*args, **kwargs)
+
+
 def _build_mcp():
     from mcp.server.fastmcp import FastMCP
 
@@ -210,6 +234,8 @@ def _build_mcp():
     server.tool()(bambu_rules_view)
     server.tool()(bambu_create_project)
     server.tool()(bambu_project_view)
+    server.tool()(bambu_sync_artifacts)
+    server.tool()(bambu_build123d_export)
     server.tool()(bambu_record_print_result)
     server.tool()(bambu_generate_world_cup_figurines)
     server.tool()(bambu_openscad_export_plan)

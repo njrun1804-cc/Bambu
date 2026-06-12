@@ -10,6 +10,7 @@ import sys
 from bambu.figurine import Figurine, Scene, generate_scad
 from bambu.handoff import inspect_print_handoff
 from bambu.preflight import detect_tools, next_steps
+from bambu.projects import sync_project_artifacts
 from bambu.slicer import SliceRequest, build_slice_plan
 
 
@@ -101,6 +102,20 @@ def build_parser() -> argparse.ArgumentParser:
     result.add_argument("--failure-mode", default="")
     result.add_argument("--notes", default="")
     result.add_argument("--next-revision", default="")
+
+    sync = subparsers.add_parser(
+        "sync-artifacts",
+        help="Hash and classify generated output files into a project artifact index.",
+    )
+    sync.add_argument("project", type=Path, help="Project directory containing project.yaml.")
+    sync.add_argument("--outputs-root", type=Path, default=Path("outputs"))
+
+    export = subparsers.add_parser(
+        "export-build123d",
+        help="Export a build123d project source/model.py to STEP and STL.",
+    )
+    export.add_argument("project", type=Path, help="Project directory containing project.yaml.")
+    export.add_argument("--output-dir", type=Path, default=Path("outputs"))
     return parser
 
 
@@ -123,6 +138,10 @@ def main(argv: list[str] | None = None) -> int:
         return _create_project(args)
     if args.command == "record-print-result":
         return _record_print_result(args)
+    if args.command == "sync-artifacts":
+        return _sync_artifacts(args)
+    if args.command == "export-build123d":
+        return _export_build123d(args)
 
     raise AssertionError(f"Unhandled command: {args.command}")
 
@@ -259,6 +278,31 @@ def _record_print_result(args: argparse.Namespace) -> int:
     print(f"Recorded print result: {result['project_slug']} {result['revision']} {result['outcome']}")
     print("Next: revise source from the recorded physical feedback before exporting again.")
     return 0
+
+
+def _sync_artifacts(args: argparse.Namespace) -> int:
+    result = sync_project_artifacts(args.project, outputs_root=args.outputs_root)
+    print(f"Synced artifacts: {result['project_slug']} {result['revision']}")
+    print(f"Count: {len(result['artifacts'])}")
+    return 0
+
+
+def _export_build123d(args: argparse.Namespace) -> int:
+    result = export_build123d_project(args.project, output_dir=args.output_dir)
+    print("build123d export")
+    print("---------------")
+    print(f"STEP: {result['step']}")
+    print(f"STL: {result['stl']}")
+    print(f"bounding box mm: {result['bounding_box_mm']}")
+    print(f"fits A1 mini: {'yes' if result['fits_a1_mini'] else 'no'}")
+    print("Manual boundary: review exported geometry before slicing or printing.")
+    return 0
+
+
+def export_build123d_project(*args, **kwargs):
+    from bambu.cad import export_build123d_project as _export_build123d_project
+
+    return _export_build123d_project(*args, **kwargs)
 
 
 def _detected_slicer_path(slicer: str) -> str | None:

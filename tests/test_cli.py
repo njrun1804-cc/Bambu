@@ -113,6 +113,47 @@ class CliTests(unittest.TestCase):
             self.assertTrue((Path(tmp) / "cable-clip" / "reviews" / "004-print-feedback.md").exists())
             self.assertIn("Recorded print result", output.getvalue())
 
+    def test_sync_artifacts_command_indexes_outputs(self):
+        from bambu.cli import main
+        from bambu.projects import create_project
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            create_project("Cable clip", root=root / "projects")
+            outputs = root / "outputs"
+            outputs.mkdir()
+            (outputs / "cable-clip.stl").write_text("solid clip")
+            output = io.StringIO()
+            with patch("sys.stdout", output):
+                exit_code = main(
+                    [
+                        "sync-artifacts",
+                        str(root / "projects" / "cable-clip"),
+                        "--outputs-root",
+                        str(outputs),
+                    ]
+                )
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Synced artifacts", output.getvalue())
+
+    def test_export_build123d_command_prints_export_summary(self):
+        from bambu.cli import main
+
+        output = io.StringIO()
+        with patch("sys.stdout", output), patch("bambu.cli.export_build123d_project") as export:
+            export.return_value = {
+                "step": "outputs/model.step",
+                "stl": "outputs/model.stl",
+                "bounding_box_mm": [10, 20, 5],
+                "fits_a1_mini": True,
+            }
+            exit_code = main(["export-build123d", "projects/model", "--output-dir", "outputs"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("outputs/model.step", output.getvalue())
+        self.assertIn("fits A1 mini: yes", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
