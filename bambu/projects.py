@@ -145,6 +145,26 @@ def write_artifact_manifest(
     return data
 
 
+def sync_project_artifacts(
+    project_path: Path | str,
+    *,
+    outputs_root: Path = Path("outputs"),
+) -> dict[str, Any]:
+    """Index generated output files matching a project slug into artifacts.json."""
+
+    project_dir = Path(project_path)
+    project = load_project(project_dir / "project.yaml")
+    slug = project["slug"]
+    revision = project.get("current_revision", "v001")
+    paths = sorted(path for path in outputs_root.glob(f"{slug}*") if path.is_file())
+    return write_artifact_manifest(
+        project_dir / "artifacts.json",
+        project_slug=slug,
+        revision=revision,
+        paths=paths,
+    )
+
+
 def record_print_result(
     project_path: Path | str,
     *,
@@ -194,6 +214,7 @@ def _artifact_entry(base: Path, path: Path) -> dict[str, Any]:
     resolved = path.resolve()
     return {
         "path": _relative_to_or_name(path, base),
+        "kind": _artifact_kind(path),
         "sha256": hashlib.sha256(resolved.read_bytes()).hexdigest(),
         "bytes": resolved.stat().st_size,
         "generated": True,
@@ -246,7 +267,30 @@ def _relative_to_or_name(path: Path, base: Path) -> str:
     try:
         return str(path.resolve().relative_to(base.resolve()))
     except ValueError:
-        return path.name
+        try:
+            return str(path.resolve().relative_to(Path.cwd().resolve()))
+        except ValueError:
+            return str(path.resolve())
+
+
+def _artifact_kind(path: Path) -> str:
+    name = path.name.lower()
+    suffix = path.suffix.lower()
+    if name.endswith(".gcode.3mf"):
+        return "sliced_gcode_3mf"
+    if suffix == ".3mf":
+        return "project_3mf"
+    if suffix == ".stl":
+        return "mesh_stl"
+    if suffix in {".step", ".stp"}:
+        return "cad_step"
+    if suffix == ".png":
+        return "preview_png"
+    if suffix in {".scad", ".py"}:
+        return "source_snapshot"
+    if suffix == ".gcode":
+        return "gcode"
+    return "generated_file"
 
 
 def _write_yaml(path: Path, data: dict[str, Any]) -> None:

@@ -83,6 +83,36 @@ class ProjectTests(unittest.TestCase):
             self.assertIn("warped_corner", review.read_text())
             self.assertIn("slot_width_mm", yaml.safe_load(measurement.read_text())["measurements"])
 
+    def test_sync_project_artifacts_hashes_and_classifies_generated_outputs(self):
+        from bambu.projects import create_project, sync_project_artifacts
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            projects_root = root / "projects"
+            outputs = root / "outputs"
+            outputs.mkdir()
+            create_project("Widget", root=projects_root)
+            for name in (
+                "widget.step",
+                "widget.stl",
+                "widget-preview.png",
+                "widget-project.3mf",
+                "widget.gcode.3mf",
+            ):
+                (outputs / name).write_text(name)
+
+            result = sync_project_artifacts(projects_root / "widget", outputs_root=outputs)
+            data = json.loads((projects_root / "widget" / "artifacts.json").read_text())
+
+        kinds = {entry["kind"] for entry in data["artifacts"]}
+        self.assertEqual(result["project_slug"], "widget")
+        self.assertIn("cad_step", kinds)
+        self.assertIn("mesh_stl", kinds)
+        self.assertIn("preview_png", kinds)
+        self.assertIn("project_3mf", kinds)
+        self.assertIn("sliced_gcode_3mf", kinds)
+        self.assertTrue(all(len(entry["sha256"]) == 64 for entry in data["artifacts"]))
+
 
 if __name__ == "__main__":
     unittest.main()
