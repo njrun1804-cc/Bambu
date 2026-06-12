@@ -81,11 +81,38 @@ def _modules() -> str:
         module shared_watch_party_base(label="BRAZIL WATCH PARTY") {
           // Wide, low shared base improves first-layer adhesion on the Textured PEI Plate.
           rounded_plate(width=118, depth=62, height=4, radius=14);
+          // Soccer cues are supportless raised base details, not fragile free-standing parts.
+          shallow_goal_net();
+          soccer_ball();
           translate([0, -28.8, 4.05]) cube([102, 2.4, 1.2], center=true);
-          translate([0, -24.2, 4.2])
-            linear_extrude(height=0.9) text(label, size=5.3, halign="center", valign="center");
+          translate([0, -25.2, 4.2])
+            linear_extrude(height=0.9) text(label, size=4.4, halign="center", valign="center");
           translate([-40, 20, 4.1]) cylinder(h=1.1, r=5.5);
           translate([40, 20, 4.1]) cylinder(h=1.1, r=5.5);
+        }
+
+        module shallow_goal_net() {
+          // A top-surface goal/net motif gives soccer context without tall posts or mesh.
+          translate([0, 23.5, 4.12]) cube([84, 1.25, 1.05], center=true);
+          translate([-42, 19.6, 4.12]) cube([1.35, 7.8, 1.05], center=true);
+          translate([42, 19.6, 4.12]) cube([1.35, 7.8, 1.05], center=true);
+          for (x=[-30,-18,-6,6,18,30]) {
+            translate([x, 20.9, 4.14]) cube([1.0, 5.6, 0.95], center=true);
+          }
+          for (x=[-24,0,24]) {
+            translate([x, 21.1, 4.16]) rotate([0, 0, 32]) cube([1.0, 13.0, 0.9], center=true);
+            translate([x, 21.1, 4.16]) rotate([0, 0, -32]) cube([1.0, 13.0, 0.9], center=true);
+          }
+        }
+
+        module soccer_ball() {
+          translate([-50.5, -5.5, 4.12]) {
+            cylinder(h=1.45, r=6.4);
+            translate([0, 0, 1.38]) cylinder(h=0.75, r=2.1, $fn=5);
+            for (angle=[0,60,120,180,240,300]) {
+              rotate([0, 0, angle]) translate([3.55, 0, 1.36]) cube([4.8, 0.9, 0.76], center=true);
+            }
+          }
         }
 
         module base_name_label(label="DAN", x=0) {

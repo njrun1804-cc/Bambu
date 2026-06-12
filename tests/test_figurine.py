@@ -68,6 +68,18 @@ class FigurineTests(unittest.TestCase):
         self.assertIn('profile="tall_neighbor"', scad)
         self.assertIn('profile="smiling_neighbor"', scad)
 
+    def test_default_scene_adds_supportless_soccer_scene_cues(self):
+        from bambu.cli import default_world_cup_scene
+        from bambu.figurine import generate_scad
+
+        scad = generate_scad(default_world_cup_scene())
+
+        self.assertIn("module soccer_ball", scad)
+        self.assertIn("module shallow_goal_net", scad)
+        self.assertIn("supportless raised base details", scad)
+        self.assertIn("soccer_ball();", scad)
+        self.assertIn("shallow_goal_net();", scad)
+
     def test_rejects_empty_scene(self):
         from bambu.figurine import Scene, generate_scad
 

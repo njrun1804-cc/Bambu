@@ -14,6 +14,7 @@ The model should read as two stylized adults inspired by the private reference p
   - Carrie: shorter curvier figure with swept light hair, sunglasses, hair-clip cue, jersey number `9`, and a crossbody bag cue
 - Brazil-watch-party treatment through raised paint guides: jersey panels, collar/side trims, numbers, and base title.
 - Top-surface raised name labels for `DAN` and `CARRIE`.
+- Shallow raised soccer ball and goal/net base details add the match-day cue without tall posts, fragile mesh, or extra supports.
 - Single-material green PLA Basic remains the default first print. The raised guides are suitable for post-print painting and can later become color regions if AMS lite is available.
 
 ## A1 Mini Constraints

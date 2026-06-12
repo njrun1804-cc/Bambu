@@ -25,7 +25,7 @@ uv run bambu handoff
 
 The generated OpenSCAD uses raised jersey panels and numbers as paint guides. It does not include official Brazil federation marks or private photos.
 
-The current quality pass uses a shared 118 x 62 mm display base, raised `DAN` and `CARRIE` name labels, two stylized figures with distinct height/build/hair/glasses/bag cues, and A1-mini-safe raised details for a 0.4 mm nozzle. To render a preview:
+The current quality pass uses a shared 118 x 62 mm display base, raised `DAN` and `CARRIE` name labels, two stylized figures with distinct height/build/hair/glasses/bag cues, and A1-mini-safe raised details for a 0.4 mm nozzle. The soccer ball and goal/net are shallow raised base details so the print keeps the watch-party feel without fragile free-standing mesh or support-heavy posts. To render a preview:
 
 ```bash
 openscad -o outputs/world-cup-neighbors-preview.png --imgsize=1600,1200 --viewall --autocenter --camera=0,-90,60,65,0,0,220 outputs/world-cup-neighbors.scad
