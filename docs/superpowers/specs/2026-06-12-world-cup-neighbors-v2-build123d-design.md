@@ -25,9 +25,25 @@ Use a **hybrid build123d caricature** approach:
 - make likeness cues broad and readable rather than tiny and realistic;
 - use the soccer scene as structure, not just decoration;
 - export STEP/STL through the existing build123d gate;
+- document what was learned as durable repo knowledge while building;
 - keep raw private photos and generated meshes out of git.
 
 This is the best tradeoff between learning build123d, improving the print, and staying within what agents can revise safely.
+
+## Learning Objective
+
+V2 is also a learning project. The implementation should leave the repo knowing more than it did before about practical agent-assisted 3D printing.
+
+Document decisions and findings as they happen, not only at the end:
+
+- which build123d APIs worked well for printable figurine geometry;
+- which APIs or modeling pathways were tried and rejected;
+- what minimum feature sizes were chosen and why;
+- how support-avoidance changed the design;
+- how the A1 mini, PLA Basic, textured PEI plate, Bambu Studio, and export pipeline shaped the model;
+- what an agent should inspect before claiming a model is ready to slice or print.
+
+This knowledge should be public-safe and reusable for future projects. It must not depend on private photos being committed.
 
 ## Rejected Alternatives
 
@@ -164,6 +180,17 @@ The v2 implementation should align with the project evidence layout design:
 
 If the evidence-layout migration is not implemented first, the v2 work may use current `reviews/`, `measurements/`, and `artifacts.json` paths for compatibility.
 
+## Documentation Deliverables
+
+Implementation should update or create these durable documentation surfaces:
+
+- `projects/world-cup-neighbors/source/README.md`: explain the v2 build123d model structure, component names, and safe edit points.
+- `projects/world-cup-neighbors/reviews/005-v2-build123d-design-notes.md` or the equivalent v2 iteration review file: record design tradeoffs and visual choices.
+- `docs/learning/build123d-figurine-workflow.md`: capture reusable lessons for future figurine or gift-object projects, including tested pathways and rejected approaches.
+- `README.md`: add a short pointer to the build123d figurine learning path once the v2 export works.
+
+The learning doc should be practical and agent-facing. It should answer: "If Codex or Claude starts a new personal 3D-print gift project tomorrow, what do we now know that prevents repeating v001 mistakes?"
+
 ## Testing And Verification
 
 Automated checks should cover:
@@ -172,7 +199,8 @@ Automated checks should cover:
 - export writes STEP and STL files when build123d is installed;
 - the bounding box fits the A1 mini build volume;
 - generated artifact hashes are recorded;
-- source files are tracked but generated outputs are ignored.
+- source files are tracked but generated outputs are ignored;
+- required learning docs exist or are updated with v2-specific notes.
 
 Manual checks should cover:
 
@@ -187,6 +215,7 @@ Manual checks should cover:
 V2 is successful if:
 
 - it teaches and exercises the build123d lane with a real project model;
+- it leaves durable, public-safe notes about the build123d and 3D-printing lessons learned;
 - the model exports through the repo's existing build123d gate;
 - the scene clearly reads as two people at a Brazil soccer watch party;
 - the goal and ball are more recognizable than v001;
