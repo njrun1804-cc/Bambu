@@ -1,0 +1,59 @@
+import io
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+
+class CliTests(unittest.TestCase):
+    def test_doctor_prints_tool_status_and_next_step(self):
+        from bambu.cli import main
+
+        output = io.StringIO()
+        with patch("sys.stdout", output):
+            exit_code = main(["doctor"])
+
+        self.assertEqual(exit_code, 0)
+        text = output.getvalue()
+        self.assertIn("Bambu preflight", text)
+        self.assertIn("OpenSCAD", text)
+        self.assertIn("Next", text)
+
+    def test_make_figurines_writes_scad_file(self):
+        from bambu.cli import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "neighbors.scad"
+            exit_code = main(["make-figurines", "--output", str(out)])
+
+            self.assertEqual(exit_code, 0)
+            scad = out.read_text()
+
+        self.assertIn("World Cup neighbors", scad)
+        self.assertIn("Brazil-inspired", scad)
+        self.assertIn("figurine", scad)
+
+    def test_slice_plan_prints_command(self):
+        from bambu.cli import main
+
+        output = io.StringIO()
+        with patch("sys.stdout", output):
+            exit_code = main(
+                [
+                    "slice-plan",
+                    "outputs/world-cup-neighbors.stl",
+                    "--output",
+                    "outputs/world-cup-neighbors.gcode.3mf",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+        text = output.getvalue()
+        self.assertIn("bambu-studio", text)
+        self.assertIn("--export-3mf", text)
+        self.assertIn("Review supports", text)
+
+
+if __name__ == "__main__":
+    unittest.main()
+

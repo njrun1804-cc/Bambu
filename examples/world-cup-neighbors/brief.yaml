@@ -1,0 +1,29 @@
+title: World Cup neighbors
+printer: Bambu Lab A1 mini
+intent: >
+  Two small stylized soccer-supporter figurines for a Brazil watch party.
+  The public example is generic and does not include private reference photos.
+style:
+  likeness: stylized, friendly, not photorealistic
+  jersey: Brazil-inspired yellow shirt, green trim, blue number
+  print_plan: single-material print with raised paint guides
+figures:
+  - name: tall_neighbor
+    height_mm: 72
+    traits:
+      - tall slim build
+      - short gray hair
+      - glasses
+    jersey_number: 10
+  - name: smiling_neighbor
+    height_mm: 64
+    traits:
+      - shorter curvy build
+      - short light hair
+      - sunglasses
+    jersey_number: 9
+safety:
+  - Keep private photos in private/ and never commit them.
+  - Review generated geometry before slicing.
+  - Do not auto-start printer jobs.
+

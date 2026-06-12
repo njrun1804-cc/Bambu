@@ -1,0 +1,26 @@
+.DS_Store
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+dist/
+build/
+*.egg-info/
+
+# Public repo safety: keep personal source photos, printer secrets, and local
+# project work out of git.
+private/
+.env
+*.local.json
+*.local.yaml
+*.local.yml
+
+# Generated printable outputs can be recreated from tracked briefs.
+outputs/*
+!outputs/.gitkeep
+*.stl
+*.3mf
+*.gcode
+*.gcode.3mf
+*.png
