@@ -7,10 +7,11 @@ name = "bambu-workbench"
 version = "0.1.0"
 description = "Agent-assisted 3D-print preparation for Bambu printers."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 license = { text = "MIT" }
 authors = [{ name = "Mike Edwards" }]
 dependencies = [
+  "build123d>=0.10.0",
   "mcp>=1.12.4",
   "pyyaml>=6.0.3",
 ]
@@ -28,11 +29,6 @@ classifiers = [
 [project.scripts]
 bambu = "bambu.cli:main"
 bambu-mcp = "bambu.mcp_server:main"
-
-[project.optional-dependencies]
-cad = [
-    "build123d>=0.10.0 ; python_full_version < '3.13'",
-]
 
 [tool.setuptools]
 packages = ["bambu"]
