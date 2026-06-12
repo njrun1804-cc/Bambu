@@ -12,6 +12,8 @@ class SliceRequest:
     output_path: Path
     slicer: str = "bambu-studio"
     executable: str | None = None
+    material: str = "Bambu PLA Basic"
+    nozzle_mm: float = 0.4
     bed_type: str = "Textured PEI Plate"
     plate: int = 0
     machine_profile: Path | None = None
@@ -25,6 +27,7 @@ class ProfileSet:
     machine: Path
     process: Path
     filament: Path
+    material: str = "Bambu PLA Basic"
 
 
 @dataclass(frozen=True)
@@ -32,6 +35,7 @@ class SlicePlan:
     tool: str
     command: list[str]
     checklist: list[str]
+    profiles: dict[str, str]
 
 
 def build_slice_plan(request: SliceRequest) -> SlicePlan:
@@ -41,10 +45,15 @@ def build_slice_plan(request: SliceRequest) -> SlicePlan:
     process_profile = request.process_profile
     filament_profile = request.filament_profile
     if not (machine_profile or process_profile or filament_profile):
-        if profiles := default_a1_mini_profiles(tool):
+        if profiles := resolve_a1_mini_profiles(tool, material=request.material, nozzle_mm=request.nozzle_mm):
             machine_profile = profiles.machine
             process_profile = profiles.process
             filament_profile = profiles.filament
+            material = profiles.material
+        else:
+            material = request.material
+    else:
+        material = request.material
     model_path = request.model_path.resolve() if request.resolve_paths else request.model_path
     output_path = request.output_path.resolve() if request.resolve_paths else request.output_path
     command = [
@@ -76,13 +85,20 @@ def build_slice_plan(request: SliceRequest) -> SlicePlan:
     checklist = [
         "Review supports, overhangs, and first-layer adhesion in the slicer before printing.",
         "Confirm the printer profile is Bambu Lab A1 mini and the bed is Textured PEI Plate.",
+        f"Confirm the slicer filament profile matches the selected material: {material}.",
         "Use A1 mini auto bed leveling and flow calibration before the first real print of this model.",
         "Use AMS lite color assignment only if the printer is actually connected with AMS lite; otherwise print PLA Basic single-color and paint the raised guides.",
         "Confirm the slicer filament profile matches the actual loaded spool: green PLA Basic matches this file, white PLA+ needs a PLA/PLA+ profile, and blue PETG HF requires re-slicing with a PETG HF profile.",
         "Keep the 118mm shared base centered on the Textured PEI Plate for adhesion and clearance.",
         "Use manual approval before sending any job to the printer.",
     ]
-    return SlicePlan(tool=tool, command=command, checklist=checklist)
+    profile_summary = {
+        "material": material,
+        "machine": str(machine_profile) if machine_profile else "",
+        "process": str(process_profile) if process_profile else "",
+        "filament": str(filament_profile) if filament_profile else "",
+    }
+    return SlicePlan(tool=tool, command=command, checklist=checklist, profiles=profile_summary)
 
 
 def default_a1_mini_profiles(
@@ -92,12 +108,24 @@ def default_a1_mini_profiles(
 ) -> ProfileSet | None:
     """Return bundled A1 mini profiles when the slicer installation provides them."""
 
+    return resolve_a1_mini_profiles(slicer, material="Bambu PLA Basic", profile_root=profile_root)
+
+
+def resolve_a1_mini_profiles(
+    slicer: str,
+    *,
+    material: str = "Bambu PLA Basic",
+    nozzle_mm: float = 0.4,
+    profile_root: Path | None = None,
+) -> ProfileSet | None:
+    """Return bundled A1 mini profiles for the requested material when present."""
+
     root = profile_root or _default_profile_root(_normalize_slicer(slicer))
-    machine = root / "machine" / "Bambu Lab A1 mini 0.4 nozzle.json"
+    machine = root / "machine" / f"Bambu Lab A1 mini {_format_nozzle(nozzle_mm)} nozzle.json"
     process = root / "process" / "0.20mm Standard @BBL A1M.json"
-    filament = root / "filament" / "Bambu PLA Basic @BBL A1M.json"
+    filament = _resolve_filament_profile(root / "filament", material, nozzle_mm)
     if machine.exists() and process.exists() and filament.exists():
-        return ProfileSet(machine=machine, process=process, filament=filament)
+        return ProfileSet(machine=machine, process=process, filament=filament, material=material)
     return None
 
 
@@ -119,3 +147,21 @@ def _settings_arg(machine_profile: Path | None, process_profile: Path | None) ->
     if not (machine_profile or process_profile):
         return None
     return f"{machine_profile or ''};{process_profile or ''}"
+
+
+def _resolve_filament_profile(filament_root: Path, material: str, nozzle_mm: float) -> Path:
+    nozzle = _format_nozzle(nozzle_mm)
+    candidates = (
+        filament_root / f"{material} @BBL A1M.json",
+        filament_root / f"{material} @BBL A1M {nozzle} nozzle.json",
+        filament_root / f"Generic {material} @BBL A1M.json",
+        filament_root / f"Generic {material} @BBL A1M {nozzle} nozzle.json",
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
+
+
+def _format_nozzle(nozzle_mm: float) -> str:
+    return f"{nozzle_mm:g}"

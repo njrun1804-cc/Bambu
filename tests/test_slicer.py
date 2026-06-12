@@ -73,6 +73,57 @@ class SlicerTests(unittest.TestCase):
         self.assertIn("--load-filaments", plan.command)
         self.assertTrue(Path(plan.command[-1]).is_absolute())
 
+    def test_a1_mini_profiles_resolve_requested_material(self):
+        from bambu.slicer import resolve_a1_mini_profiles
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            machine = root / "machine" / "Bambu Lab A1 mini 0.4 nozzle.json"
+            process = root / "process" / "0.20mm Standard @BBL A1M.json"
+            filament = root / "filament" / "Bambu PETG HF @BBL A1M.json"
+            for path in (machine, process, filament):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(f'{{"name": "{path.stem}"}}')
+
+            profiles = resolve_a1_mini_profiles(
+                "bambu-studio",
+                material="Bambu PETG HF",
+                nozzle_mm=0.4,
+                profile_root=root,
+            )
+
+        self.assertIsNotNone(profiles)
+        self.assertEqual(profiles.filament, filament)
+        self.assertEqual(profiles.material, "Bambu PETG HF")
+
+    def test_slice_plan_uses_requested_material_profile_metadata(self):
+        from bambu.slicer import SliceRequest, build_slice_plan, resolve_a1_mini_profiles
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            machine = root / "machine" / "Bambu Lab A1 mini 0.4 nozzle.json"
+            process = root / "process" / "0.20mm Standard @BBL A1M.json"
+            filament = root / "filament" / "Bambu PETG HF @BBL A1M.json"
+            for path in (machine, process, filament):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("{}")
+            profiles = resolve_a1_mini_profiles("bambu-studio", material="Bambu PETG HF", profile_root=root)
+
+            plan = build_slice_plan(
+                SliceRequest(
+                    model_path=Path("part.stl"),
+                    output_path=Path("part.gcode.3mf"),
+                    material="Bambu PETG HF",
+                    machine_profile=profiles.machine,
+                    process_profile=profiles.process,
+                    filament_profile=profiles.filament,
+                )
+            )
+
+        self.assertEqual(plan.profiles["material"], "Bambu PETG HF")
+        self.assertEqual(plan.profiles["filament"], str(filament))
+        self.assertIn("Bambu PETG HF", " ".join(plan.checklist))
+
 
 if __name__ == "__main__":
     unittest.main()
