@@ -10,6 +10,7 @@ Bambu is a public-ready workbench for describing what you want in plain English,
 - Generates a stylized pair of Brazil-watch-party figurines as OpenSCAD.
 - Builds dry-run slicer commands for Bambu Studio or OrcaSlicer.
 - Builds the current safe prototype through SCAD, STL, and sliced 3MF without printer contact.
+- Checks the generated `.gcode.3mf` for A1 mini handoff metadata and prints the exact Bambu Studio open command.
 - Keeps private photos, printer credentials, and generated meshes out of git.
 - Refuses to pretend the printer is safe to automate blindly: v1 stops at reviewable files and command plans.
 
@@ -65,6 +66,7 @@ Full safe prototype build:
 
 ```bash
 uv run bambu prototype-world-cup --output-dir outputs --slicer bambu-studio
+uv run bambu handoff
 ```
 
 This creates:
@@ -74,6 +76,21 @@ This creates:
 - `outputs/world-cup-neighbors.gcode.3mf`
 
 It does not send anything to the printer. Open the sliced project in Bambu Studio, inspect supports, scale, filament, bed type, and first layer, then manually print if it looks right.
+
+For the current generated file, the handoff command checks the sliced package for:
+
+- Bambu Lab A1 mini
+- `0.20mm Standard @BBL A1M`
+- Bambu PLA Basic
+- Textured PEI Plate
+
+It also prints:
+
+```bash
+open -a /Applications/BambuStudio.app /Users/mikeedwards/CC/Bambu/outputs/world-cup-neighbors.gcode.3mf
+```
+
+If Bambu Studio opens the setup wizard, finish the Bambu Network plug-in setup before using the Device tab. That plug-in is what Bambu Studio uses for cloud/WLAN sending, remote control, live view, printer status, and profile sync.
 
 Source-only generation:
 

@@ -8,6 +8,7 @@ import shlex
 import sys
 
 from bambu.figurine import Figurine, Scene, generate_scad
+from bambu.handoff import inspect_print_handoff
 from bambu.preflight import detect_tools, next_steps
 from bambu.slicer import SliceRequest, build_slice_plan
 
@@ -21,6 +22,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("doctor", help="Check local CAD/slicer tools and print next steps.")
     subparsers.add_parser("next", help="Print beginner-friendly next steps.")
+
+    handoff = subparsers.add_parser(
+        "handoff",
+        help="Check the generated .gcode.3mf and print the morning Bambu Studio handoff.",
+    )
+    handoff.add_argument(
+        "--file",
+        type=Path,
+        default=Path("outputs/world-cup-neighbors.gcode.3mf"),
+        help="Generated sliced project to open and review.",
+    )
 
     figurines = subparsers.add_parser(
         "make-figurines",
@@ -77,6 +89,8 @@ def main(argv: list[str] | None = None) -> int:
         return _doctor()
     if args.command == "next":
         return _next()
+    if args.command == "handoff":
+        return _handoff(args.file)
     if args.command == "make-figurines":
         return _make_figurines(args.output)
     if args.command == "slice-plan":
@@ -122,6 +136,33 @@ def _prototype_world_cup(output_dir: Path, slicer: str) -> int:
 def _next() -> int:
     _print_next_steps(detect_tools())
     return 0
+
+
+def _handoff(file: Path) -> int:
+    report = inspect_print_handoff(file)
+    print("Morning print handoff")
+    print("---------------------")
+    print(f"file: {report.file}")
+    print(f"exists: {'yes' if report.exists else 'no'}")
+    print(f"valid 3MF package: {'yes' if report.is_3mf else 'no'}")
+    print()
+    print("Expected A1 mini markers")
+    print("------------------------")
+    for marker in report.found_markers:
+        print(f"- ok: {marker}")
+    for marker in report.missing_markers:
+        print(f"- missing: {marker}")
+    print()
+    print("Open in Bambu Studio")
+    print("--------------------")
+    print(report.open_command)
+    print()
+    print("Manual boundary")
+    print("---------------")
+    print("Install/enable the Bambu Network plug-in in Bambu Studio if the setup wizard asks.")
+    print("On the Device tab, confirm the physical printer is online and is the Bambu Lab A1 mini.")
+    print("Do not start the physical print unattended; inspect plate, filament, supports, and first layer first.")
+    return 0 if report.ready_for_manual_review else 1
 
 
 def _print_next_steps(report: dict[str, object]) -> None:

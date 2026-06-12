@@ -11,6 +11,7 @@ from typing import Any
 
 from bambu.cli import default_world_cup_scene
 from bambu.figurine import generate_scad
+from bambu.handoff import inspect_print_handoff
 from bambu.preflight import detect_tools, next_steps, serialize_report
 from bambu.pipeline import build_world_cup_prototype
 from bambu.slicer import SliceRequest, build_slice_plan
@@ -103,6 +104,28 @@ def bambu_build_world_cup_prototype(
     return build_world_cup_prototype(Path(output_dir), slicer=slicer)
 
 
+def bambu_print_handoff(
+    file: str = "outputs/world-cup-neighbors.gcode.3mf",
+) -> dict[str, Any]:
+    """Inspect a sliced .gcode.3mf and return the manual Bambu Studio handoff."""
+
+    report = inspect_print_handoff(Path(file))
+    return {
+        "file": str(report.file),
+        "exists": report.exists,
+        "is_3mf": report.is_3mf,
+        "ready_for_manual_review": report.ready_for_manual_review,
+        "found_markers": list(report.found_markers),
+        "missing_markers": report.missing_markers,
+        "open_command": report.open_command,
+        "manual_boundary": [
+            "Install/enable the Bambu Network plug-in in Bambu Studio if the setup wizard asks.",
+            "On the Device tab, confirm the physical printer is online and is the Bambu Lab A1 mini.",
+            "Do not start the physical print unattended; inspect plate, filament, supports, and first layer first.",
+        ],
+    }
+
+
 def _detected_slicer_path(slicer: str) -> str | None:
     normalized = slicer.strip().lower().replace("_", "-")
     key = "orcaslicer" if normalized in {"orca", "orca-slicer", "orcaslicer"} else "bambu_studio"
@@ -122,6 +145,7 @@ def _build_mcp():
     server.tool()(bambu_openscad_export_plan)
     server.tool()(bambu_slice_plan)
     server.tool()(bambu_build_world_cup_prototype)
+    server.tool()(bambu_print_handoff)
     return server
 
 

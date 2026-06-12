@@ -15,6 +15,7 @@ The server exposes safe workflow tools:
 - `bambu_openscad_export_plan`: return the OpenSCAD export command for `.scad -> .stl`.
 - `bambu_slice_plan`: return a Bambu Studio or OrcaSlicer command and review checklist.
 - `bambu_build_world_cup_prototype`: generate SCAD, export STL, and slice 3MF without printer contact.
+- `bambu_print_handoff`: inspect a generated `.gcode.3mf`, verify A1 mini markers, and return the Bambu Studio handoff.
 
 The MCP server **does not start print jobs**. Agents must stop at source/export/slice plans and require manual approval before anything reaches the printer.
 

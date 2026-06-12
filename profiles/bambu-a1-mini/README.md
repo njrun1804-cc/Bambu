@@ -25,4 +25,12 @@ The safest first workflow is:
 5. Inspect supports and first layer.
 6. Save/export the sliced `.gcode.3mf`.
 
+For a generated `.gcode.3mf`, run:
+
+```bash
+uv run bambu handoff
+```
+
+That command verifies the expected A1 mini profile markers inside the sliced package and prints the exact Bambu Studio open command. The Device tab still needs a human check that the physical printer is online and is the A1 mini. If Bambu Studio asks for the Bambu Network plug-in, that setup is required before cloud/WLAN print sending and live printer status will work.
+
 When stable local profile JSON files exist, put local copies in `private/` first. Only publish sanitized profile files after confirming they do not contain account, device, or network-specific values.

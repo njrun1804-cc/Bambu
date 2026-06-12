@@ -2,6 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
+from zipfile import ZIP_DEFLATED, ZipFile
 
 
 class McpToolTests(unittest.TestCase):
@@ -52,6 +53,30 @@ class McpToolTests(unittest.TestCase):
 
         self.assertEqual(result["sliced"], "outputs/world-cup-neighbors.gcode.3mf")
         build.assert_called_once()
+
+    def test_mcp_print_handoff_reports_a1_mini_readiness(self):
+        from bambu.mcp_server import bambu_print_handoff
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "prototype.gcode.3mf"
+            with ZipFile(path, "w", ZIP_DEFLATED) as archive:
+                archive.writestr(
+                    "Metadata/project_settings.config",
+                    "\n".join(
+                        [
+                            "Bambu Lab A1 mini",
+                            "0.20mm Standard @BBL A1M",
+                            "Bambu PLA Basic",
+                            "Textured PEI Plate",
+                        ]
+                    ),
+                )
+
+            result = bambu_print_handoff(str(path))
+
+        self.assertTrue(result["ready_for_manual_review"])
+        self.assertEqual(result["missing_markers"], [])
+        self.assertIn("Bambu Network plug-in", " ".join(result["manual_boundary"]))
 
 
 if __name__ == "__main__":
