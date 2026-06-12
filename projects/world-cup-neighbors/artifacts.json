@@ -2,20 +2,20 @@
   "schema_version": 1,
   "project_slug": "world-cup-neighbors",
   "revision": "v002",
-  "updated_at": "2026-06-12T21:02:07+00:00",
+  "updated_at": "2026-06-12T21:10:26+00:00",
   "artifacts": [
     {
       "path": "outputs/world-cup-neighbors-v4.step",
       "kind": "cad_step",
-      "sha256": "6490e6ffaa328c779ddaf1a46f787724fbb17756b200d6027e99da5ab20fc67e",
-      "bytes": 5396288,
+      "sha256": "a0cd39e34732bf6dd07dbcc429413ab574e81d29f5a3d32785052208125e23f7",
+      "bytes": 5293517,
       "generated": true
     },
     {
       "path": "outputs/world-cup-neighbors-v4.stl",
       "kind": "mesh_stl",
-      "sha256": "027ac360763d15ae2cd58c2d915428be70fac356c2c607a6b13d34dd2684d57f",
-      "bytes": 11388634,
+      "sha256": "aaf04e6577475cbaae7e222571e41b085debca74dbac6e78e6f83f4bcfcea9a9",
+      "bytes": 11758834,
       "generated": true
     },
     {

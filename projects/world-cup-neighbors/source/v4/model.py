@@ -278,8 +278,10 @@ def _person_parts(who: str, base_h: float):
 
     # Hair -------------------------------------------------------------------------
     if is_dan:
+        # High receded hairline (like the reference) keeps the brow bars from
+        # merging into the cap rim.
         cap = Pos(fx, fy + 0.6, head_c + 0.4) * _ellipsoid(head_r + 1.2, head_r + 1.3)
-        clip = Pos(fx, fy, head_c + 1.2) * Rot(X=-12) * Pos(0, 0, 20) * Box(40, 40, 40)
+        clip = Pos(fx, fy, head_c + 4.6) * Rot(X=-10) * Pos(0, 0, 20) * Box(40, 40, 40)
         adds.append(cap & clip)
         # Parallel strand grooves; angled ones converge and pinch off slivers.
         crown = head_c + head_h / 2.0 + 0.6
@@ -289,8 +291,8 @@ def _person_parts(who: str, base_h: float):
         bob = Pos(fx, fy + 0.8, head_c + 0.2) * _ellipsoid(head_r + 1.7, (head_r + 1.7) * 1.02)
         clip = Pos(fx, fy, head_c - 6.5) * Pos(0, 0, 20) * Box(44, 44, 40)
         bob = bob & clip
-        # Open the face window; the bob keeps bangs above the brow.
-        bob = bob - Pos(fx, fy - head_r, head_c - 1.5) * Box(15.5, 14.0, 16.0)
+        # Open the face window; the bob keeps bangs above the raised brows.
+        bob = bob - Pos(fx, fy - head_r, head_c - 0.5) * Box(15.5, 14.0, 17.0)
         adds.append(bob)
         crown = head_c + head_h / 2.0 + 1.0
         engraves.append(Pos(fx - 2.6, fy + 1.0, crown) * Rot(Z=10) * Box(1.3, 20.0, 3.2))
@@ -298,10 +300,17 @@ def _person_parts(who: str, base_h: float):
     # Face: sunglasses ridge + lens pads, brows, nose, cheeks, smile ---------------
     eye_z = head_c + 1.6
     if is_dan:
-        # Lens pads overlap the frame band by ~0.2 mm on every side; an exact
-        # fit leaves coincident walls that BOP flags as self-intersections.
-        frame = RectangleRounded(14.6, 5.6, 2.0) - RectangleRounded(11.8, 3.2, 1.2)
-        lens = RectangleRounded(12.2, 3.6, 1.3) - RectangleRounded(1.6, 3.8, 0.6)
+        # Two distinct rectangular lenses with a bridge; lens pads overlap the
+        # frame band by ~0.4 mm per side - an exact fit leaves coincident
+        # walls that BOP flags as self-intersections.
+        frame = (
+            Pos(-3.85, 0) * RectangleRounded(6.6, 5.0, 1.6)
+            - Pos(-3.85, 0) * RectangleRounded(4.4, 2.8, 0.9)
+            + Pos(3.85, 0) * RectangleRounded(6.6, 5.0, 1.6)
+            - Pos(3.85, 0) * RectangleRounded(4.4, 2.8, 0.9)
+            + RectangleRounded(2.4, 1.4, 0.5)
+        )
+        lens = Pos(-3.85, 0) * RectangleRounded(5.2, 3.4, 1.1) + Pos(3.85, 0) * RectangleRounded(5.2, 3.4, 1.1)
         adds.append(_front(frame, fx, eye_z, face_y - 1.45, 7.2))
         adds.append(_front(lens, fx, eye_z, face_y - 0.75, 6.7))
     else:
@@ -316,7 +325,8 @@ def _person_parts(who: str, base_h: float):
         adds.append(_front(ring, fx, eye_z, face_y - 1.45, 7.2))
         adds.append(_front(pads, fx, eye_z, face_y - 0.75, 6.7))
 
-    brow_z = eye_z + (3.6 if is_dan else 4.0)
+    # Brows clear the frame tops and stay below hairline/bangs.
+    brow_z = eye_z + (3.4 if is_dan else 5.3)
     for sx in (-1, 1):
         adds.append(
             _front(Rot(Z=sx * 8) * RectangleRounded(4.6, 1.6, 0.7), fx + sx * 4.0, brow_z, face_y - 1.3, 6.5)
