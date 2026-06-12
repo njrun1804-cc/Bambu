@@ -85,10 +85,10 @@ def _modules() -> str:
           shallow_goal_net();
           soccer_ball();
           translate([0, -28.8, 4.05]) cube([102, 2.4, 1.2], center=true);
-          translate([0, -25.2, 4.2])
+          translate([0, -25.2, 3.92])
             linear_extrude(height=0.9) text(label, size=4.4, halign="center", valign="center");
-          translate([-40, 20, 4.1]) cylinder(h=1.1, r=5.5);
-          translate([40, 20, 4.1]) cylinder(h=1.1, r=5.5);
+          translate([-40, 20, 3.92]) cylinder(h=1.1, r=5.5);
+          translate([40, 20, 3.92]) cylinder(h=1.1, r=5.5);
         }
 
         module shallow_goal_net() {
@@ -106,7 +106,7 @@ def _modules() -> str:
         }
 
         module soccer_ball() {
-          translate([-50.5, -5.5, 4.12]) {
+          translate([-50.5, -5.5, 3.92]) {
             cylinder(h=1.45, r=6.4);
             translate([0, 0, 1.38]) cylinder(h=0.75, r=2.1, $fn=5);
             for (angle=[0,60,120,180,240,300]) {
@@ -116,26 +116,26 @@ def _modules() -> str:
         }
 
         module base_name_label(label="DAN", x=0) {
-          translate([x, -15.2, 4.22])
+          translate([x, -15.2, 3.92])
             linear_extrude(height=0.95) text(label, size=5.0, halign="center", valign="center");
         }
 
         module head_shape(head_radius=7.8) {
           translate([0, 0, 58]) scale([0.92, 0.82, 1.08]) sphere(r=head_radius);
           translate([0, -6.8, 57.4]) scale([0.50, 0.18, 0.32]) sphere(r=head_radius);
-          translate([-2.8, -7.2, 56]) sphere(r=0.85);
-          translate([2.8, -7.2, 56]) sphere(r=0.85);
-          translate([0, -7.7, 53.8]) rotate([90, 0, 0]) cylinder(h=0.9, r=1.35);
+          translate([-2.8, -6.35, 56]) sphere(r=0.95);
+          translate([2.8, -6.35, 56]) sphere(r=0.95);
+          translate([0, -6.5, 53.8]) rotate([90, 0, 0]) cylinder(h=1.1, r=1.35);
         }
 
         module eyewear(glasses=false, sunglasses=false) {
           if (glasses || sunglasses) {
             lens_h = sunglasses ? 2.2 : 1.4;
-            translate([-3.2, -7.9, 58.1]) cube([4.5, 1.1, lens_h], center=true);
-            translate([3.2, -7.9, 58.1]) cube([4.5, 1.1, lens_h], center=true);
-            translate([0, -7.95, 58.1]) cube([2.1, 0.9, 0.8], center=true);
-            translate([-6.4, -6.9, 58]) rotate([0, 0, 17]) cube([3.3, 0.8, 0.8], center=true);
-            translate([6.4, -6.9, 58]) rotate([0, 0, -17]) cube([3.3, 0.8, 0.8], center=true);
+            translate([-3.2, -6.65, 58.1]) cube([4.5, 1.4, lens_h], center=true);
+            translate([3.2, -6.65, 58.1]) cube([4.5, 1.4, lens_h], center=true);
+            translate([0, -6.65, 58.1]) cube([2.1, 1.2, 0.8], center=true);
+            translate([-6.4, -5.95, 58]) rotate([0, 0, 17]) cube([3.3, 1.0, 0.8], center=true);
+            translate([6.4, -5.95, 58]) rotate([0, 0, -17]) cube([3.3, 1.0, 0.8], center=true);
           }
         }
 
@@ -153,13 +153,15 @@ def _modules() -> str:
           translate([7.1, -4.9, 60.8]) cube([4.0, 1.2, 1.8], center=true);
         }
 
-        module jersey_paint_guides(number_text="10", body_width=18) {
+        module jersey_paint_guides(number_text="10", body_width=18, body_depth=11) {
           // Raised guides are thick enough to paint and to survive a 0.4mm nozzle.
-          translate([0, -9.35, 37]) cube([body_width*0.88, 1.2, 20], center=true);
-          translate([0, -10.05, 47.4]) cube([body_width*0.72, 1.1, 2.2], center=true);
-          translate([-body_width*0.31, -10.1, 38.3]) cube([1.6, 1.1, 15.5], center=true);
-          translate([ body_width*0.31, -10.1, 38.3]) cube([1.6, 1.1, 15.5], center=true);
-          translate([0, -10.6, 35.2]) rotate([90, 0, 0])
+          front_y = -body_depth/2 - 0.08;
+          text_y = -body_depth/2 + 0.20;
+          translate([0, front_y, 37]) cube([body_width*0.88, 1.4, 20], center=true);
+          translate([0, front_y-0.08, 47.4]) cube([body_width*0.72, 1.3, 2.2], center=true);
+          translate([-body_width*0.31, front_y-0.08, 38.3]) cube([1.6, 1.3, 15.5], center=true);
+          translate([ body_width*0.31, front_y-0.08, 38.3]) cube([1.6, 1.3, 15.5], center=true);
+          translate([0, text_y, 35.2]) rotate([90, 0, 0])
             linear_extrude(height=1.0) text(number_text, size=8.2, halign="center", valign="center");
         }
 
@@ -171,10 +173,11 @@ def _modules() -> str:
           translate([ body_width*0.64, -4.0, 23.2]) sphere(r=2.6);
         }
 
-        module crossbody_bag(body_width=20) {
-          translate([-4, -10.5, 39.5]) rotate([0, 0, -26]) cube([2.1, 1.2, 27], center=true);
-          translate([8.5, -11.0, 27.5]) scale([0.86, 0.25, 1.08]) sphere(r=5.2);
-          translate([8.5, -13.0, 27.5]) cube([5.8, 1.0, 5.8], center=true);
+        module crossbody_bag(body_width=20, body_depth=12) {
+          front_y = -body_depth/2 - 0.05;
+          translate([-4, front_y, 39.5]) rotate([0, 0, -26]) cube([2.1, 1.4, 27], center=true);
+          translate([8.5, front_y-0.2, 27.5]) scale([0.86, 0.30, 1.08]) sphere(r=5.2);
+          translate([8.5, front_y-0.4, 27.5]) cube([5.8, 1.2, 5.8], center=true);
         }
 
         module legs_and_shoes(body_width=18, stance=1) {
@@ -187,12 +190,12 @@ def _modules() -> str:
         module figure_core(body_width=18, body_depth=11, height=68, number_text="10") {
           legs_and_shoes(body_width=body_width);
           translate([0, 0, 25]) rounded_capsule(height=27, width=body_width, depth=body_depth);
-          jersey_paint_guides(number_text=number_text, body_width=body_width);
+          jersey_paint_guides(number_text=number_text, body_width=body_width, body_depth=body_depth);
           supportless_pose(body_width=body_width, body_depth=body_depth);
           head_shape(head_radius=7.7);
         }
 
-        module person_specific_features(profile="generic", body_width=18, glasses=false, sunglasses=false) {
+        module person_specific_features(profile="generic", body_width=18, body_depth=11, glasses=false, sunglasses=false) {
           if (profile == "tall_neighbor") {
             short_salt_pepper_hair();
             eyewear(glasses=true, sunglasses=false);
@@ -200,7 +203,7 @@ def _modules() -> str:
           } else if (profile == "smiling_neighbor") {
             swept_light_hair_with_clip();
             eyewear(glasses=false, sunglasses=true);
-            crossbody_bag(body_width=body_width);
+            crossbody_bag(body_width=body_width, body_depth=body_depth);
           } else {
             eyewear(glasses=glasses, sunglasses=sunglasses);
           }
@@ -209,7 +212,7 @@ def _modules() -> str:
         module figurine(label="figure", scale_factor=1, number_text="10", glasses=false, sunglasses=false, profile="generic", body_width=18, body_depth=11) {
           scale([scale_factor, scale_factor, scale_factor]) {
             figure_core(body_width=body_width, body_depth=body_depth, number_text=number_text);
-            person_specific_features(profile=profile, body_width=body_width, glasses=glasses, sunglasses=sunglasses);
+            person_specific_features(profile=profile, body_width=body_width, body_depth=body_depth, glasses=glasses, sunglasses=sunglasses);
           }
         }
         """
@@ -227,11 +230,12 @@ def _figure_call(figure: Figurine, x: float) -> str:
     body_width = 16.5 if figure.body_shape == "slim" else 21.0 if figure.body_shape == "curvy" else 18.0
     body_depth = 10.5 if figure.body_shape == "slim" else 12.4 if figure.body_shape == "curvy" else 11.0
     number_symbol = f"number_{slug(figure.jersey_number)}"
+    base_contact_z = 3.9 - 0.65 * scale_factor
     return dedent(
         f"""
         // {figure.name}: {figure.body_shape}; {figure.hair}; {', '.join(figure.accessories) or 'no accessories'}
         {number_symbol} = "{figure.jersey_number}";
-        translate([{x:.1f}, 0, 4.0]) figurine(label="{label}", scale_factor={scale_factor:.3f}, number_text={number_symbol}, glasses={glasses}, sunglasses={sunglasses}, profile="{profile}", body_width={body_width:.1f}, body_depth={body_depth:.1f});
+        translate([{x:.1f}, 0, {base_contact_z:.3f}]) figurine(label="{label}", scale_factor={scale_factor:.3f}, number_text={number_symbol}, glasses={glasses}, sunglasses={sunglasses}, profile="{profile}", body_width={body_width:.1f}, body_depth={body_depth:.1f});
         """
     ).strip()
 

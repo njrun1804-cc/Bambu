@@ -80,6 +80,17 @@ class FigurineTests(unittest.TestCase):
         self.assertIn("soccer_ball();", scad)
         self.assertIn("shallow_goal_net();", scad)
 
+    def test_default_scene_embeds_base_contacts_to_avoid_floating_regions(self):
+        from bambu.cli import default_world_cup_scene
+        from bambu.figurine import generate_scad
+
+        scad = generate_scad(default_world_cup_scene())
+
+        self.assertIn("translate([0, -25.2, 3.92])", scad)
+        self.assertIn("translate([x, -15.2, 3.92])", scad)
+        self.assertIn("translate([-26.0, 0, 3.212])", scad)
+        self.assertIn("translate([26.0, 0, 3.288])", scad)
+
     def test_rejects_empty_scene(self):
         from bambu.figurine import Scene, generate_scad
 
