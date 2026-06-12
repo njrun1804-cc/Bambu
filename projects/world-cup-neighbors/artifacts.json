@@ -2,27 +2,27 @@
   "schema_version": 1,
   "project_slug": "world-cup-neighbors",
   "revision": "v002",
-  "updated_at": "2026-06-12T22:03:09+00:00",
+  "updated_at": "2026-06-12T22:29:35+00:00",
   "artifacts": [
     {
       "path": "outputs/world-cup-neighbors-v4.gcode.3mf",
       "kind": "sliced_gcode_3mf",
-      "sha256": "b11283ddb07dc30dcb339f4530d40436f25ff6aab51094f816a9498e01ab57b8",
-      "bytes": 6053575,
+      "sha256": "003d2fd5d98593078b9faa5dad368b2796c3ecf23033eb0d8961428806921524",
+      "bytes": 5844059,
       "generated": true
     },
     {
       "path": "outputs/world-cup-neighbors-v4.step",
       "kind": "cad_step",
-      "sha256": "56048cd2250700da65f724226d34624aadcefad10bc51b899ddd7089f6109ae1",
-      "bytes": 8022952,
+      "sha256": "83ed34f389ed29a0c8209220615e57bae2b213229403cc3525ec5282d73e98c2",
+      "bytes": 7840070,
       "generated": true
     },
     {
       "path": "outputs/world-cup-neighbors-v4.stl",
       "kind": "mesh_stl",
-      "sha256": "008f9a98f048041119ac9801900b9436b5111bdd81fa174ae1acf2e747a48ad3",
-      "bytes": 14146434,
+      "sha256": "c97a501afc81e58012a7388de4002f6997de077e05219859fabc8568efc1b454",
+      "bytes": 13527134,
       "generated": true
     },
     {

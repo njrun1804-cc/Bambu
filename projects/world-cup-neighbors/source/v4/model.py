@@ -178,9 +178,13 @@ def make_ball(base_h: float):
         _front(RegularPolygon(3.4, 5) - RegularPolygon(2.2, 5), b["x"], cz, front_y - 0.2, 2.0)
     ]
     # Radial seams, each cut along the local surface normal for uniform depth.
+    # Only the upper seams: grooves on the ball's lower half leave hovering
+    # roof ledges that the slicer flags as floating regions.
     beta = math.radians(36.0)
     for k in range(5):
         a = math.radians(90 + k * 72)
+        if math.sin(a) < -0.3:
+            continue
         u = (math.cos(a), 0.0, math.sin(a))
         n = (math.sin(beta) * u[0], -math.cos(beta), math.sin(beta) * u[2])
         origin = tuple(center[i] + (b["r"] + 0.3) * n[i] for i in range(3))
@@ -281,7 +285,11 @@ def _person_parts(who: str, base_h: float):
         solids.append(Pos(*root) * Sphere(arm_r + 1.1))  # shoulder cap
         return solids
 
-    adds.extend(_hang_arm(fx + outer * side, outer * 6.0, torso_h + 1.0))
+    # Outer arms hang straight down hugging the body, with the mittens
+    # grounded in the base like the inner ones: a mitten that ends mid-air
+    # starts printing as a floating island (caught by the slicer, not by the
+    # overhang QC, which measures slope rather than reachability).
+    adds.extend(_hang_arm(fx + outer * side, 0.0, shoulder_z - (base_h + 1.8)))
     # Inner arms reach all the way down so the joined-hands blob fuses into
     # the base: no floating mitten underside, and the pair anchors to the
     # base. The 8-degree tilt keeps the dropped mittens clear of the inner
@@ -377,8 +385,12 @@ def _person_parts(who: str, base_h: float):
             _front(Rot(Z=sx * 8) * RectangleRounded(4.8, 1.6, 0.7), fx + sx * 4.1, brow_z, face_y - 1.3, 6.5)
         )
 
+    # Nose with a trimmed flat underside: a full ellipsoid tip pokes past the
+    # receding face surface, so its first ~1 mm of layers print as floating
+    # dots. The trim makes the first nose layer wide enough to reach the face.
     nose_z = eye_z - 3.4
-    adds.append(Pos(fx, face_y + 0.1, nose_z) * _ellipsoid(1.6, 2.3))
+    nose = Pos(fx, face_y + 0.1, nose_z) * _ellipsoid(1.6, 2.3)
+    adds.append(nose & Pos(fx, face_y + 0.1, nose_z - 1.4 + 5.0) * Box(10, 10, 10))
 
     # Smile: engraved crescent (lune) on the jaw sphere's equator, so the cut
     # floor lands 1.0-1.7 mm inside the jaw across the whole lune. A smile cut
