@@ -13,6 +13,8 @@ build/
 # Public repo safety: keep personal source photos, printer secrets, and local
 # project work out of git.
 private/
+projects/*/photos/*
+!projects/*/photos/.gitkeep
 .env
 *.local.json
 *.local.yaml

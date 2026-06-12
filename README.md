@@ -2,11 +2,13 @@
 
 Agent-assisted 3D-print preparation for a **Bambu Lab A1 mini**.
 
-Bambu is a public-ready workbench for describing what you want in plain English, letting Codex or Claude help turn it into printable source files, and keeping the actual print step reviewable. It starts with OpenSCAD because the output is text, inspectable, parametric, and easy for agents to revise.
+Bambu is a public-ready workbench for describing what you want in plain English, letting Codex or Claude help turn it into printable source files, and keeping the actual print step reviewable. It uses build123d as the serious Python CAD backend and keeps OpenSCAD for simple public/remixable models and the current figurine lane.
 
 ## What It Does Today
 
 - Checks whether local 3D-printing tools are installed.
+- Exposes printer/material/plate rules as agent-readable context.
+- Creates structured `projects/<slug>/` workspaces with manifests, reviews, measurements, photos placeholders, and artifact indexes.
 - Generates a stylized pair of Brazil-watch-party figurines as OpenSCAD.
 - Builds dry-run slicer commands for Bambu Studio or OrcaSlicer.
 - Builds the current safe prototype through SCAD, STL, and sliced 3MF without printer contact.
@@ -19,26 +21,50 @@ Bambu is a public-ready workbench for describing what you want in plain English,
 ```bash
 git clone https://github.com/njrun1804/Bambu.git
 cd Bambu
-python3 -m bambu.cli doctor
-python3 -m bambu.cli make-figurines --output outputs/world-cup-neighbors.scad
-python3 -m bambu.cli slice-plan outputs/world-cup-neighbors.stl --output outputs/world-cup-neighbors.gcode.3mf
+uv run bambu doctor
+uv run bambu make-figurines --output outputs/world-cup-neighbors.scad
+uv run bambu slice-plan outputs/world-cup-neighbors.stl --output outputs/world-cup-neighbors.gcode.3mf
 ```
 
 If OpenSCAD is installed, open `outputs/world-cup-neighbors.scad` and export an STL. If Bambu Studio or OrcaSlicer is installed, use the generated slicer command as the starting point, then inspect supports, scale, filament, and first-layer settings before printing.
 
 ## Recommended Human-Agent Loop
 
-1. Write a short brief in `private/` for personal work or `examples/` for public-safe examples.
-2. Ask Codex or Claude to generate or revise OpenSCAD.
-3. Render or export in OpenSCAD.
-4. Inspect the mesh before slicing.
-5. Build a slicer command with `bambu slice-plan`.
-6. Open the sliced project in Bambu Studio or OrcaSlicer.
+1. Start with `uv run bambu doctor` or the MCP `bambu_context_view`.
+2. Create a structured workspace with `uv run bambu create-project "<idea>"`.
+3. Choose the lane from the manifest: build123d for serious/dimensional CAD, OpenSCAD for simple public/remixable models, or the current figurine lane.
+4. Generate or revise source before exporting artifacts.
+5. Render/export source, record artifact hashes, then build a slicer command with `bambu slice-plan`.
+6. Open the sliced project in Bambu Studio, inspect supports, scale, filament, plate side, and first layer.
 7. Print only after manual review.
+8. Record the physical result with `uv run bambu record-print-result` before making the next revision.
 
-## Installing Optional Tools
+## Agent Operating Substrate
 
-The Python package itself has no runtime dependencies. External tools are optional but useful:
+General model work lives under `projects/<slug>/`. Each project has a `project.yaml` manifest, `source/`, `reviews/`, `measurements/`, `photos/`, and `artifacts.json`.
+
+Agents should answer these questions from repo state instead of improvising:
+
+- What printer/material/plate constraints apply?
+- Which CAD lane is this model in?
+- Which files are source-of-truth versus generated?
+- What validation has passed?
+- What is the next safe action?
+- What physical print feedback should inform the next revision?
+
+The serious CAD default is `build123d`. OpenSCAD remains the simple public/remixable lane and the current figurine first-pass lane. Bambu Studio is the blessed slicer path, OrcaSlicer is a fallback/comparison path, and printer contact remains manual only.
+
+## Python Runtime And External Tools
+
+This repo is pinned to Python 3.12 through `.python-version` because build123d's current CAD stack is not available for every newer Python runtime. Use `uv run ...` for repo commands so the correct environment is used.
+
+Python dependencies include:
+
+- **build123d**: default serious Python CAD backend.
+- **PyYAML**: project manifest and context parsing.
+- **mcp**: local agent tool server.
+
+External tools are optional but useful:
 
 - **OpenSCAD**: exports `.scad` to `.stl`, `.3mf`, or `.png`.
 - **Bambu Studio**: slices and exports `.gcode.3mf` for Bambu printers.
@@ -55,7 +81,7 @@ On Mike's Mac, the verified toolchain is:
 Run:
 
 ```bash
-python3 -m bambu.cli doctor
+uv run bambu doctor
 ```
 
 That command tells you what is missing and what to do next.
@@ -95,7 +121,7 @@ If Bambu Studio opens the setup wizard, finish the Bambu Network plug-in setup b
 Source-only generation:
 
 ```bash
-python3 -m bambu.cli make-figurines --output outputs/world-cup-neighbors.scad
+uv run bambu make-figurines --output outputs/world-cup-neighbors.scad
 ```
 
 The example creates two simplified soccer-supporter figures with Brazil-inspired jersey panels and raised number guides. It is designed for single-material printing and post-print painting. It does not include private photos or official team marks.
@@ -115,7 +141,7 @@ The `.gitignore` is set up for this by default.
 Run tests:
 
 ```bash
-python3 -m unittest discover -s tests -v
+uv run python -m unittest discover -s tests -v
 ```
 
 Run the local helper:

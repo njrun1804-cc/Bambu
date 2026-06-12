@@ -1,0 +1,35 @@
+schema_version: 1
+slug: world-cup-neighbors
+intent: Stylized Brazil watch-party neighbor figurines for the Bambu Lab A1 mini.
+privacy: public_safe
+lane: figurine
+status: source_generated
+current_revision: v001
+next_safe_action: review OpenSCAD source and export STL
+printer:
+  model: Bambu Lab A1 mini
+  build_volume_mm:
+    - 180
+    - 180
+    - 180
+  nozzle_mm: 0.4
+  max_hotend_c: 300
+  printer_contact_policy: manual_only
+material:
+  name: Bambu PLA Basic
+  lane_default: easy
+  requires_dryness_tracking: false
+plate:
+  name: Bambu Dual-Texture PEI Plate
+  side_required: explicit
+  side: textured
+constraints:
+  dimensions_mm:
+    - shared base remains within 118 x 62 mm
+  tolerance_notes: Decorative print; prioritize supportless raised details over dimensional fit.
+manual_gates:
+  - export_review
+  - slicer_review
+  - print_start
+source_files:
+  - outputs/world-cup-neighbors.scad

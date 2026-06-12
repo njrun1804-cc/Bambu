@@ -11,15 +11,22 @@ uv run bambu-mcp
 The server exposes safe workflow tools:
 
 - `bambu_doctor`: inspect local CAD/slicer setup and next steps.
+- `bambu_context_view`: inspect printer, material, plate, tool, and safety context.
+- `bambu_rules_view`: inspect backend, artifact, privacy, slicer, and print-gate rules.
+- `bambu_create_project`: create a structured `projects/<slug>/` workspace from a plain-English idea.
+- `bambu_project_view`: inspect manifest, artifacts, validation status, and next safe action for a project.
+- `bambu_record_print_result`: capture measurements, material state, failure mode, and next revision notes after a physical print.
 - `bambu_generate_world_cup_figurines`: generate the default figurine OpenSCAD source.
 - `bambu_openscad_export_plan`: return the OpenSCAD export command for `.scad -> .stl`.
 - `bambu_slice_plan`: return a Bambu Studio or OrcaSlicer command and review checklist.
 - `bambu_build_world_cup_prototype`: generate SCAD, export STL, and slice 3MF without printer contact.
 - `bambu_print_handoff`: inspect a generated `.gcode.3mf`, verify A1 mini markers, and return the Bambu Studio handoff.
 
-The MCP server **does not start print jobs**. Agents must stop at source/export/slice plans and require manual approval before anything reaches the printer.
+The MCP server **does not start print jobs**. Agents must stop at source/export/slice plans and require manual approval before anything reaches the printer. Physical outcomes should come back through `bambu_record_print_result` so future revisions are based on measured feedback, not memory.
 
 Keep private reference photos, printer credentials, and local slicer profiles under `private/`. Do not commit them.
+
+General work should start from `bambu_context_view`, then `bambu_create_project` or `bambu_project_view`. Use build123d for serious/dimensional CAD, OpenSCAD for simple public/remixable models, and Bambu Studio as the primary slicer handoff.
 
 ## Suggested MCP Client Config
 
