@@ -34,7 +34,7 @@ If OpenSCAD is installed, open `outputs/world-cup-neighbors.scad` and export an 
 2. Create a structured workspace with `uv run bambu create-project "<idea>"`.
 3. Choose the lane from the manifest: build123d for serious/dimensional CAD, OpenSCAD for simple public/remixable models, or the current figurine lane.
 4. Generate or revise source before exporting artifacts.
-5. Render/export source, record artifact hashes, then build a slicer command with `bambu slice-plan`.
+5. Render/export source, record artifact hashes with `uv run bambu sync-artifacts <project>`, then build a slicer command with `bambu slice-plan`.
 6. Open the sliced project in Bambu Studio, inspect supports, scale, filament, plate side, and first layer.
 7. Print only after manual review.
 8. Record the physical result with `uv run bambu record-print-result` before making the next revision.
@@ -53,6 +53,15 @@ Agents should answer these questions from repo state instead of improvising:
 - What physical print feedback should inform the next revision?
 
 The serious CAD default is `build123d`. OpenSCAD remains the simple public/remixable lane and the current figurine first-pass lane. Bambu Studio is the blessed slicer path, OrcaSlicer is a fallback/comparison path, and printer contact remains manual only.
+
+For build123d projects, the first export gate is:
+
+```bash
+uv run bambu export-build123d projects/<slug> --output-dir outputs
+uv run bambu sync-artifacts projects/<slug> --outputs-root outputs
+```
+
+That writes STEP/STL files locally, records artifact hashes, and reports whether the build123d bounding box fits the A1 mini volume. It does not slice or print.
 
 ## Python Runtime And External Tools
 

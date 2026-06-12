@@ -6,8 +6,7 @@ import importlib.util
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-
-from build123d import export_step, export_stl
+import warnings
 
 from bambu.projects import load_project, sync_project_artifacts
 
@@ -26,6 +25,7 @@ def export_build123d_project(
     slug = project["slug"]
     source = source_file or project_dir / "source" / "model.py"
     model = load_build123d_model(source, model_symbol=model_symbol)
+    export_step, export_stl = _build123d_exporters()
 
     output_dir.mkdir(parents=True, exist_ok=True)
     step_path = output_dir / f"{slug}.step"
@@ -62,8 +62,18 @@ def _load_module(source: Path) -> ModuleType:
     if spec is None or spec.loader is None:
         raise ValueError(f"Cannot load build123d source: {source}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"build123d\..*")
+        spec.loader.exec_module(module)
     return module
+
+
+def _build123d_exporters():
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module=r"build123d\..*")
+        from build123d import export_step, export_stl
+
+    return export_step, export_stl
 
 
 def _bounding_box_mm(model: Any) -> list[float]:
