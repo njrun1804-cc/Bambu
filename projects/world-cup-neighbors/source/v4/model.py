@@ -132,6 +132,13 @@ def make_base():
         _front(Text("DAN", size, **text_kw), -33.0, label_z, front_y - proud, proud + 2.0),
         _front(_star(4.0, 1.6), 0.0, label_z, front_y - proud, proud + 2.0),
         _front(Text("CARRIE", size, **text_kw), 33.0, label_z, front_y - proud, proud + 2.0),
+        # Party banner on the base deck, clear of the ball and the figures.
+        # 7 mm bold keeps stroke width above the 1.2 mm raised minimum;
+        # v001 proved deck text this size prints legibly.
+        extrude(
+            Plane.XY.offset(p["z"] - 0.5) * Pos(18.0, -18.5) * Text("WORLD CUP 2026", 7.0, **text_kw),
+            amount=1.7,
+        ),
     ]
     return slab + features
 

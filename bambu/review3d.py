@@ -195,8 +195,17 @@ obj.data.materials.append(mat)
 bpy.context.scene.render.engine = 'BLENDER_WORKBENCH'
 bpy.context.scene.display.shading.light = 'STUDIO'
 bpy.context.scene.display.shading.color_type = 'MATERIAL'
-bpy.context.scene.render.resolution_x = 1400
-bpy.context.scene.render.resolution_y = 1000
+# Cavity + shadow shading makes low-relief detail (engraved pupils, smile
+# lines, hair grooves) legible in renders, which flat shading hides.
+bpy.context.scene.display.shading.show_cavity = True
+bpy.context.scene.display.shading.cavity_type = 'BOTH'
+bpy.context.scene.display.shading.cavity_ridge_factor = 1.5
+bpy.context.scene.display.shading.cavity_valley_factor = 1.5
+bpy.context.scene.display.shading.curvature_ridge_factor = 1.5
+bpy.context.scene.display.shading.curvature_valley_factor = 1.5
+bpy.context.scene.display.shading.show_shadows = True
+bpy.context.scene.render.resolution_x = 1600
+bpy.context.scene.render.resolution_y = 1100
 bpy.ops.object.camera_add()
 cam = bpy.context.object
 bpy.context.scene.camera = cam
