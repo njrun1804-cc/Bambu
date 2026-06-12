@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
 import shutil
 
 
@@ -16,8 +17,17 @@ class ToolStatus:
 
 TOOL_CANDIDATES: dict[str, tuple[str, ...]] = {
     "openscad": ("openscad",),
-    "bambu_studio": ("bambu-studio", "BambuStudio", "BambuStudio.app"),
-    "orcaslicer": ("orcaslicer", "OrcaSlicer", "orca-slicer"),
+    "bambu_studio": (
+        "bambu-studio",
+        "BambuStudio",
+        "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio",
+    ),
+    "orcaslicer": (
+        "orcaslicer",
+        "OrcaSlicer",
+        "orca-slicer",
+        "/Applications/OrcaSlicer.app/Contents/MacOS/OrcaSlicer",
+    ),
     "blender": ("blender",),
 }
 
@@ -31,6 +41,10 @@ TOOL_HINTS: dict[str, str] = {
 
 def _first_on_path(names: tuple[str, ...]) -> str | None:
     for name in names:
+        if name.startswith("/"):
+            if Path(name).exists():
+                return name
+            continue
         found = shutil.which(name)
         if found:
             return found
@@ -80,7 +94,12 @@ def next_steps(
     return steps
 
 
+def serialize_report(report: dict[str, ToolStatus]) -> dict[str, dict[str, str | bool | None]]:
+    """Return a JSON-friendly representation of a tool report."""
+
+    return {key: asdict(value) for key, value in report.items()}
+
+
 def _available(report: dict[str, object], key: str) -> bool:
     item = report.get(key)
     return bool(getattr(item, "available", False))
-

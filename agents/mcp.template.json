@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "bambu": {
+      "command": "uv",
+      "args": ["--directory", "/Users/mikeedwards/CC/Bambu", "run", "bambu-mcp"]
+    }
+  }
+}
+

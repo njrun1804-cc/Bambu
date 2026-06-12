@@ -36,8 +36,16 @@ class CliTests(unittest.TestCase):
     def test_slice_plan_prints_command(self):
         from bambu.cli import main
 
+        fake_report = {
+            "bambu_studio": type(
+                "Tool",
+                (),
+                {"available": True, "path": "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio"},
+            )(),
+            "orcaslicer": type("Tool", (), {"available": False, "path": None})(),
+        }
         output = io.StringIO()
-        with patch("sys.stdout", output):
+        with patch("sys.stdout", output), patch("bambu.cli.detect_tools", return_value=fake_report):
             exit_code = main(
                 [
                     "slice-plan",
@@ -49,11 +57,10 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         text = output.getvalue()
-        self.assertIn("bambu-studio", text)
+        self.assertIn("/Applications/BambuStudio.app/Contents/MacOS/BambuStudio", text)
         self.assertIn("--export-3mf", text)
         self.assertIn("Review supports", text)
 
 
 if __name__ == "__main__":
     unittest.main()
-

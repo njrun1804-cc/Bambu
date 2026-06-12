@@ -11,11 +11,20 @@ class SliceRequest:
     model_path: Path
     output_path: Path
     slicer: str = "bambu-studio"
+    executable: str | None = None
     bed_type: str = "Textured PEI Plate"
     plate: int = 0
     machine_profile: Path | None = None
     process_profile: Path | None = None
     filament_profile: Path | None = None
+    resolve_paths: bool = False
+
+
+@dataclass(frozen=True)
+class ProfileSet:
+    machine: Path
+    process: Path
+    filament: Path
 
 
 @dataclass(frozen=True)
@@ -27,28 +36,40 @@ class SlicePlan:
 
 def build_slice_plan(request: SliceRequest) -> SlicePlan:
     tool = _normalize_slicer(request.slicer)
+    executable = request.executable or tool
+    machine_profile = request.machine_profile
+    process_profile = request.process_profile
+    filament_profile = request.filament_profile
+    if not (machine_profile or process_profile or filament_profile):
+        if profiles := default_a1_mini_profiles(tool):
+            machine_profile = profiles.machine
+            process_profile = profiles.process
+            filament_profile = profiles.filament
+    model_path = request.model_path.resolve() if request.resolve_paths else request.model_path
+    output_path = request.output_path.resolve() if request.resolve_paths else request.output_path
     command = [
-        tool,
+        executable,
         "--orient",
+        "1",
         "--arrange",
         "1",
         "--curr-bed-type",
         request.bed_type,
     ]
 
-    settings = _settings_arg(request)
+    settings = _settings_arg(machine_profile, process_profile)
     if settings:
         command.extend(["--load-settings", settings])
-    if request.filament_profile:
-        command.extend(["--load-filaments", str(request.filament_profile)])
+    if filament_profile:
+        command.extend(["--load-filaments", str(filament_profile)])
 
     command.extend(
         [
             "--slice",
             str(request.plate),
             "--export-3mf",
-            str(request.output_path),
-            str(request.model_path),
+            str(output_path),
+            str(model_path),
         ]
     )
 
@@ -61,6 +82,22 @@ def build_slice_plan(request: SliceRequest) -> SlicePlan:
     return SlicePlan(tool=tool, command=command, checklist=checklist)
 
 
+def default_a1_mini_profiles(
+    slicer: str,
+    *,
+    profile_root: Path | None = None,
+) -> ProfileSet | None:
+    """Return bundled A1 mini profiles when the slicer installation provides them."""
+
+    root = profile_root or _default_profile_root(_normalize_slicer(slicer))
+    machine = root / "machine" / "Bambu Lab A1 mini 0.4 nozzle.json"
+    process = root / "process" / "0.20mm Standard @BBL A1M.json"
+    filament = root / "filament" / "Bambu PLA Basic @BBL A1M.json"
+    if machine.exists() and process.exists() and filament.exists():
+        return ProfileSet(machine=machine, process=process, filament=filament)
+    return None
+
+
 def _normalize_slicer(value: str) -> str:
     normalized = value.strip().lower().replace("_", "-")
     if normalized in {"orca", "orca-slicer", "orcaslicer"}:
@@ -70,8 +107,12 @@ def _normalize_slicer(value: str) -> str:
     raise ValueError(f"Unsupported slicer: {value}")
 
 
-def _settings_arg(request: SliceRequest) -> str | None:
-    if not (request.machine_profile or request.process_profile):
-        return None
-    return f"{request.machine_profile or ''};{request.process_profile or ''}"
+def _default_profile_root(slicer: str) -> Path:
+    app_name = "OrcaSlicer.app" if slicer == "orcaslicer" else "BambuStudio.app"
+    return Path("/Applications") / app_name / "Contents" / "Resources" / "profiles" / "BBL"
 
+
+def _settings_arg(machine_profile: Path | None, process_profile: Path | None) -> str | None:
+    if not (machine_profile or process_profile):
+        return None
+    return f"{machine_profile or ''};{process_profile or ''}"

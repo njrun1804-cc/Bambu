@@ -50,6 +50,23 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["bambu-studio", "orcaslicer", "orca"],
         help="Slicer CLI to plan for.",
     )
+
+    prototype = subparsers.add_parser(
+        "prototype-world-cup",
+        help="Generate SCAD, export STL, and slice 3MF for the World Cup figurine prototype.",
+    )
+    prototype.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("outputs"),
+        help="Directory for generated prototype files.",
+    )
+    prototype.add_argument(
+        "--slicer",
+        default="bambu-studio",
+        choices=["bambu-studio", "orcaslicer", "orca"],
+        help="Slicer CLI to run.",
+    )
     return parser
 
 
@@ -64,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
         return _make_figurines(args.output)
     if args.command == "slice-plan":
         return _slice_plan(args.model, args.output, args.slicer)
+    if args.command == "prototype-world-cup":
+        return _prototype_world_cup(args.output_dir, args.slicer)
 
     raise AssertionError(f"Unhandled command: {args.command}")
 
@@ -84,6 +103,19 @@ def _doctor() -> int:
         print(f"- {labels[key]}: {marker} - {detail}")
     print()
     _print_next_steps(report)
+    return 0
+
+
+def _prototype_world_cup(output_dir: Path, slicer: str) -> int:
+    from bambu.pipeline import build_world_cup_prototype
+
+    result = build_world_cup_prototype(output_dir, slicer=slicer)
+    print("Prototype built")
+    print("---------------")
+    for key in ("scad", "stl", "sliced"):
+        print(f"{key}: {result[key]}")
+    print()
+    print(result["manual_boundary"])
     return 0
 
 
@@ -108,7 +140,16 @@ def _make_figurines(output: Path) -> int:
 
 
 def _slice_plan(model: Path, output: Path, slicer: str) -> int:
-    plan = build_slice_plan(SliceRequest(model_path=model, output_path=output, slicer=slicer))
+    executable = _detected_slicer_path(slicer)
+    plan = build_slice_plan(
+        SliceRequest(
+            model_path=model,
+            output_path=output,
+            slicer=slicer,
+            executable=executable,
+            resolve_paths=True,
+        )
+    )
     print("Slicer command")
     print("--------------")
     print(" ".join(shlex.quote(part) for part in plan.command))
@@ -118,6 +159,14 @@ def _slice_plan(model: Path, output: Path, slicer: str) -> int:
     for item in plan.checklist:
         print(f"- {item}")
     return 0
+
+
+def _detected_slicer_path(slicer: str) -> str | None:
+    key = "orcaslicer" if slicer in {"orca", "orcaslicer"} else "bambu_studio"
+    status = detect_tools().get(key)
+    if status and status.available:
+        return status.path
+    return None
 
 
 def default_world_cup_scene() -> Scene:
@@ -146,4 +195,3 @@ def default_world_cup_scene() -> Scene:
 
 if __name__ == "__main__":
     sys.exit(main())
-

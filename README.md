@@ -9,6 +9,7 @@ Bambu is a public-ready workbench for describing what you want in plain English,
 - Checks whether local 3D-printing tools are installed.
 - Generates a stylized pair of Brazil-watch-party figurines as OpenSCAD.
 - Builds dry-run slicer commands for Bambu Studio or OrcaSlicer.
+- Builds the current safe prototype through SCAD, STL, and sliced 3MF without printer contact.
 - Keeps private photos, printer credentials, and generated meshes out of git.
 - Refuses to pretend the printer is safe to automate blindly: v1 stops at reviewable files and command plans.
 
@@ -43,6 +44,13 @@ The Python package itself has no runtime dependencies. External tools are option
 - **OrcaSlicer**: alternate slicer CLI.
 - **Blender**: future sculpting/mesh repair lane for more organic figurines.
 
+On Mike's Mac, the verified toolchain is:
+
+- `openscad@snapshot` 2026.06.10
+- Bambu Studio 02.07.01.57
+- OrcaSlicer 2.3.2
+- Blender 5.1.2
+
 Run:
 
 ```bash
@@ -52,6 +60,22 @@ python3 -m bambu.cli doctor
 That command tells you what is missing and what to do next.
 
 ## World Cup Figurine Example
+
+Full safe prototype build:
+
+```bash
+uv run bambu prototype-world-cup --output-dir outputs --slicer bambu-studio
+```
+
+This creates:
+
+- `outputs/world-cup-neighbors.scad`
+- `outputs/world-cup-neighbors.stl`
+- `outputs/world-cup-neighbors.gcode.3mf`
+
+It does not send anything to the printer. Open the sliced project in Bambu Studio, inspect supports, scale, filament, bed type, and first layer, then manually print if it looks right.
+
+Source-only generation:
 
 ```bash
 python3 -m bambu.cli make-figurines --output outputs/world-cup-neighbors.scad
@@ -83,3 +107,10 @@ Run the local helper:
 scripts/bambu doctor
 ```
 
+Run the local MCP server for agent clients:
+
+```bash
+uv run bambu-mcp
+```
+
+See `agents/README.md` for MCP client config and agent role prompts.

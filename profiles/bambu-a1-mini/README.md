@@ -10,7 +10,13 @@ Default assumptions in `bambu.slicer`:
 - auto-arrange enabled
 - plate: `0`, meaning all plates in common Bambu/Orca CLI usage
 
-The repo does not ship machine, process, or filament JSON profiles yet. The safest first workflow is:
+When Bambu Studio or OrcaSlicer is installed under `/Applications`, the repo auto-loads bundled defaults when they exist:
+
+- machine: `BBL/machine/Bambu Lab A1 mini 0.4 nozzle.json`
+- process: `BBL/process/0.20mm Standard @BBL A1M.json`
+- filament: `BBL/filament/Bambu PLA Basic @BBL A1M.json`
+
+The safest first workflow is:
 
 1. Generate or export STL.
 2. Open the STL in Bambu Studio.
@@ -20,4 +26,3 @@ The repo does not ship machine, process, or filament JSON profiles yet. The safe
 6. Save/export the sliced `.gcode.3mf`.
 
 When stable local profile JSON files exist, put local copies in `private/` first. Only publish sanitized profile files after confirming they do not contain account, device, or network-specific values.
-

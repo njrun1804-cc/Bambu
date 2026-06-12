@@ -16,6 +16,9 @@ Bambu is a public, safety-conscious 3D-print workbench for a Bambu Lab A1 mini.
 - `bambu/figurine.py`: generates OpenSCAD for stylized figurines.
 - `bambu/slicer.py`: builds Bambu Studio or OrcaSlicer command plans.
 - `bambu/cli.py`: beginner-facing command-line workflow.
+- `bambu/mcp_server.py`: local stdio MCP server; safe workflow tools only.
+- `agents/`: public MCP/agent configuration, prompts, and workflows.
+- `.agents/skills/`: shared skill entrypoints for runtimes that support skills.
 - `examples/`: public-safe briefs and workflows.
 - `profiles/`: printer/profile notes.
 - `private/`: ignored local-only work area.
@@ -35,5 +38,5 @@ For manual smoke testing:
 python3 -m bambu.cli doctor
 python3 -m bambu.cli make-figurines --output outputs/world-cup-neighbors.scad
 python3 -m bambu.cli slice-plan outputs/world-cup-neighbors.stl --output outputs/world-cup-neighbors.gcode.3mf
+uv run bambu-mcp
 ```
-
