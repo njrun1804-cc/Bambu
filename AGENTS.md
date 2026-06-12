@@ -14,13 +14,20 @@ Bambu is a public, safety-conscious 3D-print workbench for a Bambu Lab A1 mini.
 
 - `bambu/preflight.py`: detects optional external tools.
 - `bambu/figurine.py`: generates OpenSCAD for stylized figurines.
+- `bambu/cad.py`: build123d export gate (STEP/STL + bounding box).
+- `bambu/mesh.py`: STL analysis core - watertight, overhang patches, floating islands.
+- `bambu/printability.py`: sliced-3mf QC against printer + owned filament inventory.
+- `bambu/review3d.py`: FreeCAD STEP review + Blender render harness.
+- `bambu/design_pipeline.py`: structured design-spec gates (designs/<rev>/*.yaml).
 - `bambu/slicer.py`: builds Bambu Studio or OrcaSlicer command plans.
-- `bambu/cli.py`: beginner-facing command-line workflow.
+- `bambu/cli.py`: command-line workflow (doctor, design-check, release-check, qc, handoff, ...).
 - `bambu/mcp_server.py`: local stdio MCP server; safe workflow tools only.
 - `agents/`: public MCP/agent configuration, prompts, and workflows.
 - `.agents/skills/`: shared skill entrypoints for runtimes that support skills.
+- `docs/learning/`: paid-for lessons (OCCT/STEP geometry rules, print-path QC).
 - `examples/`: public-safe briefs and workflows.
-- `profiles/`: printer/profile notes.
+- `profiles/`: printer profile + owned filament inventory (QC reads this).
+- `projects/<slug>/`: manifests, designs/<rev> specs, source, reviews, artifacts.
 - `private/`: ignored local-only work area.
 - `outputs/`: ignored generated output area.
 
@@ -35,8 +42,13 @@ python3 -m unittest discover -s tests -v
 For manual smoke testing:
 
 ```bash
-python3 -m bambu.cli doctor
-python3 -m bambu.cli make-figurines --output outputs/world-cup-neighbors.scad
-python3 -m bambu.cli slice-plan outputs/world-cup-neighbors.stl --output outputs/world-cup-neighbors.gcode.3mf
+uv run bambu doctor
+uv run bambu release-check projects/world-cup-neighbors --revision v4 \
+  --source-file projects/world-cup-neighbors/source/v4/model.py \
+  --output-slug world-cup-neighbors-v4 --no-render
+uv run bambu qc outputs/world-cup-neighbors-v4.gcode.3mf --stl outputs/world-cup-neighbors-v4.stl
 uv run bambu-mcp
 ```
+
+Before writing build123d geometry, read `docs/learning/occt-step-geometry-rules.md`;
+before slicing or printing, read `docs/learning/print-path-qc.md`.

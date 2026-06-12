@@ -15,8 +15,10 @@ Bambu is a public-ready workbench for describing what you want in plain English,
 - Reviews build123d STEP/STL outputs through headless FreeCAD and Blender previews without printer contact.
 - Validates agent-readable design specs before CAD generation, so v3 work starts from YAML constraints instead of hand-tweaking model code.
 - Checks the generated `.gcode.3mf` for A1 mini handoff metadata and prints the exact Bambu Studio open command.
+- Gates the actual print path with `bambu release-check`: FreeCAD STEP validity, watertight mesh, connected-patch overhangs, and floating-island reachability in one pass.
+- Audits sliced files against the printer and the owned filament inventory with `bambu qc` (supportless contract, filament types, plate, nozzle, time/material).
 - Keeps private photos, printer credentials, and generated meshes out of git.
-- Refuses to pretend the printer is safe to automate blindly: v1 stops at reviewable files and command plans.
+- Refuses to pretend the printer is safe to automate blindly: printing is a human decision after slicer review.
 
 ## Quick Start
 
@@ -36,9 +38,9 @@ If OpenSCAD is installed, open `outputs/world-cup-neighbors.scad` and export an 
 2. Create a structured workspace with `uv run bambu create-project "<idea>"`.
 3. Choose the lane from the manifest: build123d for serious/dimensional CAD, OpenSCAD for simple public/remixable models, or the current figurine lane.
 4. Generate or revise source before exporting artifacts.
-5. Render/export source, record artifact hashes with `uv run bambu sync-artifacts <project>`, then build a slicer command with `bambu slice-plan`.
-6. Open the sliced project in Bambu Studio, inspect supports, scale, filament, plate side, and first layer.
-7. Print only after manual review.
+5. Run `uv run bambu release-check <project> --revision <rev>` until every gate passes, then record artifact hashes with `uv run bambu sync-artifacts <project>`.
+6. Slice in the Bambu Studio GUI (authoritative time/cost; the CLI-exported `.gcode.3mf` will not reopen in the GUI), then run `uv run bambu qc <sliced> --stl <model.stl>` and `uv run bambu handoff`.
+7. Open the sliced project in Bambu Studio, inspect supports, scale, filament, plate side, and first layer. Print only after manual review.
 8. Record the physical result with `uv run bambu record-print-result` before making the next revision.
 
 ## Agent Operating Substrate
@@ -169,23 +171,28 @@ uv run python tools/review_3d.py projects/world-cup-neighbors --json outputs/rev
 
 FreeCAD can report a model as valid and closed while still finding deeper geometry-check warnings. Treat those warnings as design cleanup input before printing the next revision.
 
-## World Cup Neighbors V3 Agentic Pipeline
+## World Cup Neighbors V4
 
-World Cup neighbors v3 starts from structured specs:
-
-- `projects/world-cup-neighbors/designs/v3/design.yaml`
-- `projects/world-cup-neighbors/designs/v3/people.yaml`
-- `projects/world-cup-neighbors/designs/v3/print_constraints.yaml`
-- `projects/world-cup-neighbors/designs/v3/visual_acceptance.yaml`
-- `projects/world-cup-neighbors/designs/v3/build_plan.yaml`
-
-Run:
+v4.1 is the shipped revision: a chibi couple with engraved-pupil faces,
+joined hands grounded in the base, a fused ball at Dan's foot, and a
+WORLD CUP 2026 deck banner — one fused solid, supportless, sliced at
+1h45m / 52.6 g of green PLA Basic. Specs are gates
+(`designs/v4/*.yaml`), the build123d source is hand-authored
+(`source/v4/model.py`), and review cameras are data
+(`designs/v4/views.yaml`).
 
 ```bash
-uv run bambu design-check projects/world-cup-neighbors --revision v3
+uv run bambu design-check projects/world-cup-neighbors --revision v4
+uv run bambu release-check projects/world-cup-neighbors --revision v4 \
+  --source-file projects/world-cup-neighbors/source/v4/model.py \
+  --output-slug world-cup-neighbors-v4 \
+  --views projects/world-cup-neighbors/designs/v4/views.yaml
 ```
 
-Only after that gate passes should an agent generate `source/v3/` build123d components, export STEP/STL, run FreeCAD, render Blender review views, and ask for human approval before Bambu Studio slicing or any physical print.
+The build's full failure catalog and fixes live in
+`docs/learning/occt-step-geometry-rules.md` (CAD-side) and
+`docs/learning/print-path-qc.md` (print-side); the per-revision record is
+`projects/world-cup-neighbors/reviews/008-v4-build-notes.md`.
 
 ## Public Repo Safety
 
