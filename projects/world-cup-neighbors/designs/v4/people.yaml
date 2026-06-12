@@ -3,20 +3,20 @@ people:
   - id: dan
     name: Dan
     role: left_figurine
-    target_height_mm: 54
-    head_mm: {width: 19.0, height: 21.0}
-    torso_mm: {width: 17.0, height: 17.0}
+    target_height_mm: 47
+    head_mm: {width: 22.0, height: 23.5}
+    torso_mm: {width: 18.0, height: 13.5}
     silhouette:
       relative_height: taller
       build: slim
-      pose: right_arm_raised_fan_cheer
+      pose: arms_down_couple_holding_inner_hands
     likeness_cues:
       - short wavy gray hair, slightly receded, swept back
       - rectangular sunglasses ridge
       - tall slim stance
       - broad smile
     print_safe_face:
-      glasses: fused_raised_rectangular_ridge
+      glasses: open_rectangular_ridge_with_engraved_pupils
       brows: raised_broad_bars
       nose: raised_vertical_ridge
       smile: engraved_broad_arc
@@ -31,20 +31,20 @@ people:
   - id: carrie
     name: Carrie
     role: right_figurine
-    target_height_mm: 48
-    head_mm: {width: 19.5, height: 20.0}
-    torso_mm: {width: 18.5, height: 15.0}
+    target_height_mm: 42
+    head_mm: {width: 22.0, height: 22.0}
+    torso_mm: {width: 19.5, height: 12.0}
     silhouette:
       relative_height: shorter
       build: rounder
-      pose: left_arm_raised_wave
+      pose: arms_down_couple_holding_inner_hands
     likeness_cues:
       - light reddish bob-style solid hair mass
       - round sunglasses ridge, slightly oversized
       - rounder silhouette, big cheeks
       - warm smile
     print_safe_face:
-      glasses: fused_raised_round_ridge
+      glasses: open_round_ridge_with_engraved_pupils
       brows: raised_broad_bars
       nose: raised_vertical_ridge
       smile: engraved_broad_arc

@@ -12,7 +12,7 @@ target_model:
   base_size_mm: {x: 125, y: 68, z: 10}
   base_depth_note: 68 leaves room for 1.8 mm raised front lettering inside the 70 mm budget
   print_orientation: flat_on_base
-  figure_height_mm: {dan: 52-56, carrie: 46-50}
+  figure_height_mm: {dan: 45-49, carrie: 40-44}
 geometry_contract:
   single_fused_solid: true
   engraves_via_boolean_subtraction: true

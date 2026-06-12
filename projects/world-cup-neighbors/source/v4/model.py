@@ -1,12 +1,19 @@
 """World Cup neighbors v4 build123d model.
 
 Hand-authored against designs/v4/*.yaml (the spec gates) and the ChatGPT v3b
-revised design guide. The hard lesson from the v3b attempt: export exactly one
-fused solid. Every component overlaps its neighbor by >= 0.3 mm and the scene
-is assembled with explicit boolean fuses; engraved cues are real subtractions.
+sheets; v4.1 retargets the colored rendering: ~49% chibi heads, stubby legs,
+arms-down couple pose with Dan's arm around Carrie's back, eyes behind open
+glasses, and the ball fused at Dan's foot.
+
+Hard-won OCCT/STEP rules encoded below:
+- export exactly one fused solid; compounds of overlapping solids fail review
+- every overlap >= 0.3 mm; graze-depth contacts orphan slivers or stall fuses
+- ellipsoids must be revolved from arc profiles, and only prolate ones
+  (r_z >= r_xy) survive STEP export; oblate masses are spheres instead
+- engraves stop short of any bulge's foremost point or they slice off wafers
 
 Coordinate frame: Z up, plate at z=0. Viewer (front) looks along +Y, so front
-faces point -Y. Figures stand mid-base, goal behind them, ball in front.
+faces point -Y. Figures stand mid-base, goal behind them, ball front-left.
 """
 
 from __future__ import annotations
@@ -18,6 +25,7 @@ from build123d import (
     Box,
     Circle,
     Cylinder,
+    Cone,
     EllipticalCenterArc,
     FontStyle,
     Line,
@@ -39,10 +47,10 @@ from build123d import (
 PARAMS = {
     "base": {"x": 125.0, "y": 68.0, "z": 10.0, "corner_r": 10.0, "top_fillet": 2.0},
     "letters": {"size": 9.0, "proud": 1.8},  # base_lettering_proud_mm 1.5-2.0
-    "goal": {"post_r": 2.5, "bar": 2.2, "plane_y": 26.0, "half_span": 47.0, "top_z": 50.0},
-    "ball": {"r": 8.0, "y": -23.0, "sink": 4.0},
-    "dan": {"x": -19.0, "head_w": 19.0, "head_h": 21.0, "torso_w": 17.0, "torso_h": 17.0},
-    "carrie": {"x": 19.0, "head_w": 19.5, "head_h": 20.0, "torso_w": 18.5, "torso_h": 15.0},
+    "goal": {"post_r": 2.5, "bar": 2.2, "plane_y": 26.0, "half_span": 40.0, "top_z": 45.0},
+    "ball": {"r": 9.5, "x": -25.5, "y": -16.5, "sink": 4.0},
+    "dan": {"x": -11.8, "head_w": 22.0, "head_h": 23.5, "torso_w": 18.0, "torso_h": 13.5},
+    "carrie": {"x": 11.8, "head_w": 22.0, "head_h": 22.0, "torso_w": 19.5, "torso_h": 12.0},
     "figure_y": -6.0,
 }
 
@@ -70,13 +78,23 @@ def _capsule(r: float, length: float):
     )
 
 
+def _capsule_between(a: tuple, b: tuple, r: float):
+    """Capsule between two world points."""
+
+    d = tuple(b[i] - a[i] for i in range(3))
+    length = math.sqrt(sum(c * c for c in d))
+    polar = math.degrees(math.acos(d[2] / length))
+    azimuth = math.degrees(math.atan2(d[1], d[0]))
+    return Pos(*a) * Rot(Z=azimuth) * Rot(Y=polar) * _capsule(r, length)
+
+
 def _ellipsoid(r_xy: float, r_z: float):
-    """Ellipsoid of revolution about Z.
+    """Prolate ellipsoid of revolution about Z (requires r_z >= r_xy).
 
     Build the half profile from an elliptical arc closed by an axis line.
     Trimming a full Ellipse with a boolean leaves a profile that revolves into
-    an unorientable STEP export, and non-uniform scale(Sphere) produces BSpline
-    pcurves that fail FreeCAD's strict BOP check.
+    an unorientable STEP export; oblate revolves (r_z < r_xy) are unorientable
+    too, so squashed masses must be spheres instead.
     """
 
     arc = EllipticalCenterArc((0, 0), r_xy, r_z, start_angle=-90, end_angle=90)
@@ -128,16 +146,16 @@ def make_goal(base_h: float):
         parts.append(Pos(x, y, (top + base_h - 1) / 2) * Cylinder(g["post_r"], top - base_h + 1))
     # Crossbar caps the posts.
     parts.append(Pos(0, y, top) * Box(2 * g["half_span"] + 6.0, 5.0, 5.0))
-    # Net lattice: vertical bars every 11 mm -> 8.8 mm openings (spec 8-12).
-    for x in range(-44, 45, 11):
+    # Net lattice: vertical bars every 12 mm -> 9.8 mm openings (spec 8-12).
+    for x in range(-36, 37, 12):
         parts.append(Pos(float(x), y + 0.6, (top + base_h - 1) / 2) * Box(bar, bar, top - base_h + 1))
-    for z in (20.0, 31.5, 43.0):
+    for z in (21.0, 32.0):
         parts.append(Pos(0, y + 0.6, z) * Box(2 * g["half_span"], bar, bar))
     return parts
 
 
 def make_ball(base_h: float):
-    """Fused ball with an engraved front pentagon and radial seams.
+    """Ball fused to the base at Dan's foot, with engraved pentagon + seams.
 
     The seams never cross each other or the pentagon; crossing engraves
     (e.g. intersecting torus rings) leave self-intersecting faces behind.
@@ -145,12 +163,12 @@ def make_ball(base_h: float):
 
     b = PARAMS["ball"]
     cz = base_h + b["r"] - b["sink"]
-    center = (0.0, b["y"], cz)
+    center = (b["x"], b["y"], cz)
     ball = Pos(*center) * Sphere(b["r"])
     front_y = b["y"] - b["r"]
 
     grooves = [
-        _front(RegularPolygon(3.0, 5) - RegularPolygon(1.9, 5), 0.0, cz, front_y - 0.2, 1.9)
+        _front(RegularPolygon(3.4, 5) - RegularPolygon(2.2, 5), b["x"], cz, front_y - 0.2, 2.0)
     ]
     # Radial seams, each cut along the local surface normal for uniform depth.
     beta = math.radians(36.0)
@@ -160,7 +178,7 @@ def make_ball(base_h: float):
         n = (math.sin(beta) * u[0], -math.cos(beta), math.sin(beta) * u[2])
         origin = tuple(center[i] + (b["r"] + 0.3) * n[i] for i in range(3))
         plane = Plane(origin=origin, x_dir=(-u[2], 0.0, u[0]), z_dir=n)
-        grooves.append(extrude(plane * RectangleRounded(1.2, 2.6, 0.5), amount=-1.6))
+        grooves.append(extrude(plane * RectangleRounded(1.3, 3.0, 0.5), amount=-1.6))
     return ball, grooves
 
 
@@ -184,169 +202,191 @@ def _person_parts(who: str, base_h: float):
     head_h = p["head_h"]
     head_r = head_w / 2.0
 
-    leg_r = 3.2 if is_dan else 3.4
-    leg_top = base_h + (11.0 if is_dan else 8.5)
-    shorts_h = 7.0
-    shorts_top = leg_top + shorts_h - 2.0
+    leg_r = 3.4 if is_dan else 3.5
+    leg_top = base_h + (7.5 if is_dan else 6.0)
+    shorts_h = 6.5
     torso_w = p["torso_w"]
-    torso_d = 12.0 if is_dan else 13.0
+    torso_d = 13.0 if is_dan else 14.0
     torso_h = p["torso_h"]
-    torso_bottom = shorts_top - 2.0
+    torso_bottom = leg_top + 2.5
     torso_top = torso_bottom + torso_h
-    neck_top = torso_top + 2.5
-    head_c = neck_top + head_h / 2.0 - 1.5
+    neck_top = torso_top + 2.0
+    # Head bottom sits 1.5 mm INTO the torso top: an exact pole-on-plane
+    # tangency (head bottom == torso_top) gives BOP self-intersections.
+    head_c = neck_top + head_h / 2.0 - 3.5
     face_y = fy - head_r  # foremost face point
 
     adds = []
     engraves = []
 
-    # Feet + legs + shorts ---------------------------------------------------
-    foot_dx = 4.3
+    # Feet + stubby legs + shorts ---------------------------------------------
+    foot_dx = 4.5
     for dx in (-foot_dx, foot_dx):
-        adds.append(Pos(fx + dx, fy - 2.5, base_h - 1.0) * _rounded_block(7.0, 10.0, 3.0, 2.4))
+        adds.append(Pos(fx + dx, fy - 2.5, base_h - 1.0) * _rounded_block(7.5, 10.5, 3.0, 2.5))
         adds.append(Pos(fx + dx, fy, (leg_top + base_h - 1) / 2) * Cylinder(leg_r, leg_top - base_h + 1))
     adds.append(Pos(fx, fy, leg_top - 1.0) * _rounded_block(torso_w - 1.0, torso_d - 0.5, shorts_h, 3.5))
 
-    # Torso ------------------------------------------------------------------
-    adds.append(Pos(fx, fy, torso_bottom) * _rounded_block(torso_w, torso_d, torso_h, 4.0, top_fillet=2.5))
+    # Torso ----------------------------------------------------------------------
+    adds.append(Pos(fx, fy, torso_bottom) * _rounded_block(torso_w, torso_d, torso_h, 4.5, top_fillet=2.5))
     if not is_dan:
         # Carrie: rounder silhouette - a soft hip band.
-        adds.append(Pos(fx, fy, torso_bottom + 2.5) * _rounded_block(torso_w + 2.0, torso_d + 1.0, 5.0, 4.5))
+        adds.append(Pos(fx, fy, torso_bottom + 1.5) * _rounded_block(torso_w + 2.0, torso_d + 1.0, 4.5, 5.0))
 
-    # Jersey panel + number ----------------------------------------------------
+    # Jersey panel + number --------------------------------------------------------
     chest_front = fy - torso_d / 2.0
-    panel_c = torso_bottom + torso_h * 0.52
-    adds.append(_front(RectangleRounded(11.5, 11.5, 2.5), fx, panel_c, chest_front - 1.2, 3.0))
+    panel_c = torso_bottom + torso_h * 0.55
+    adds.append(_front(RectangleRounded(11.0, 9.5, 2.5), fx, panel_c, chest_front - 1.2, 3.0))
     number = "10" if is_dan else "9"
     adds.append(
-        _front(Text(number, 7.5, font=FONT, font_style=FontStyle.BOLD), fx, panel_c, chest_front - 2.6, 2.0)
+        _front(Text(number, 6.8, font=FONT, font_style=FontStyle.BOLD), fx, panel_c, chest_front - 2.6, 2.0)
     )
     # V-collar cue.
     for sx in (-1, 1):
         adds.append(
             _front(
-                Rot(Z=sx * 28) * RectangleRounded(1.6, 5.4, 0.7),
-                fx + sx * 2.1,
-                torso_top - 2.2,
+                Rot(Z=sx * 28) * RectangleRounded(1.6, 4.6, 0.7),
+                fx + sx * 1.9,
+                torso_top - 1.8,
                 chest_front - 1.2,
                 3.0,
             )
         )
 
-    # Arms: simple bent cylinders with mitten hands, fused to torso. Keep the
-    # shoulder line off the torso top-fillet start plane (torso_top - 2.5) or
-    # OCCT leaves a degenerate tangency sliver behind.
+    # Arms: relaxed couple pose, both arms down. The inner arms tilt toward
+    # each other so the mittens overlap into joined hands - a deliberate solid
+    # fuse that welds the pair together (graze-depth contacts are the enemy).
+    # Keep the shoulder line off the torso top-fillet start plane or OCCT
+    # leaves a degenerate tangency sliver.
     shoulder_z = torso_top - 3.2
     side = torso_w / 2.0 + 0.6
-    arm_r = 2.6 if is_dan else 2.7
+    arm_r = 2.8 if is_dan else 2.9
 
-    def _arm(root_x: float, tilt_deg: float, length: float, downward: bool):
-        """Capsule from the shoulder; returns (solids, tip_point)."""
-
+    def _hang_arm(root_x: float, tilt_deg: float, length: float):
         tilt = math.radians(tilt_deg)
-        direction = (math.sin(tilt), 0.0, -math.cos(tilt) if downward else math.cos(tilt))
+        direction = (math.sin(tilt), 0.0, -math.cos(tilt))
         root = (root_x, fy, shoulder_z)
-        rot = Rot(Y=tilt_deg if not downward else 180.0 - tilt_deg)
-        # Local +Z mapped onto `direction` (downward uses the flipped frame).
+        rot = Rot(Y=180.0 - tilt_deg)
         solids = [Pos(*root) * rot * _capsule(arm_r, length)]
         tip = tuple(root[i] + direction[i] * length for i in range(3))
         solids.append(Pos(*tip) * Sphere(arm_r + 0.7))  # mitten
-        band = tuple(root[i] + direction[i] * 5.0 for i in range(3))
-        solids.append(Pos(*band) * rot * Pos(0, 0, 0.0) * Cylinder(arm_r + 0.8, 2.0))
+        band = tuple(root[i] + direction[i] * 4.0 for i in range(3))
+        solids.append(Pos(*band) * rot * Cylinder(arm_r + 0.8, 2.0))
         solids.append(Pos(*root) * Sphere(arm_r + 1.1))  # shoulder cap
         return solids
 
-    # Raised cheering arm on the outer side; hanging arm rests on the hip so
-    # the mitten fuses to the shorts instead of ending in a floating dome.
-    adds.extend(_arm(fx + outer * side, outer * 35.0, torso_h - 3.0, downward=False))
-    adds.extend(_arm(fx - outer * side, -outer * 5.0, torso_h - 2.0, downward=True))
+    adds.extend(_hang_arm(fx + outer * side, outer * 6.0, torso_h + 1.0))
+    # Inner arms reach all the way down so the joined-hands blob fuses into
+    # the base: no floating mitten underside, and the pair anchors to the
+    # base. The 8-degree tilt keeps the dropped mittens clear of the inner
+    # legs (a graze there leaves self-intersecting slivers).
+    inner_len = shoulder_z - (base_h + 1.8)
+    adds.extend(_hang_arm(fx - outer * side, -outer * 8.0, inner_len))
 
-    # Neck + head ----------------------------------------------------------------
-    adds.append(Pos(fx, fy, torso_top) * Cylinder(3.7, 6.0))
-    adds.append(Pos(fx, fy, head_c) * _ellipsoid(head_r, head_h / 2.0))
+    # Neck + head --------------------------------------------------------------------
+    adds.append(Pos(fx, fy, torso_top) * Cylinder(4.2, 5.0))
+    # A round head must be a Sphere: _ellipsoid is only STEP-safe when prolate.
+    head = Sphere(head_r) if head_h <= head_w else _ellipsoid(head_r, head_h / 2.0)
+    adds.append(Pos(fx, fy, head_c) * head)
     # Jaw and lower-face masses are SPHERES on purpose: an oblate ellipsoid of
     # revolution (r_z < r_xy) exports unorientable STEP geometry from OCCT.
     if is_dan:
-        adds.append(Pos(fx, fy + 0.3, head_c - 7.2) * Sphere(6.7))
+        # Jaw exactly coaxial with the neck cylinder: a 0.3 mm offset makes
+        # their intersection degenerate (near-equal radii, near-equal axes)
+        # and BOP flags self-intersecting faces.
+        jaw_y, jaw_z, jaw_r = fy, head_c - 7.8, 7.4
+        adds.append(Pos(fx, jaw_y, jaw_z) * Sphere(jaw_r))
         # Ears buried well past the head surface; a graze-depth overlap makes
         # OCCT orphan the protruding cap as a separate solid.
         for sx in (-1, 1):
-            adds.append(Pos(fx + sx * (head_r - 1.2), fy + 0.5, head_c - 1.4) * Sphere(2.7))
+            adds.append(Pos(fx + sx * (head_r - 1.3), fy + 0.5, head_c - 1.6) * Sphere(2.9))
     else:
         # Carrie: soft chubby lower face.
-        adds.append(Pos(fx, fy + 0.5, head_c - 6.8) * Sphere(7.3))
+        jaw_y, jaw_z, jaw_r = fy + 0.5, head_c - 7.0, 7.9
+        adds.append(Pos(fx, jaw_y, jaw_z) * Sphere(jaw_r))
 
-    # Hair -------------------------------------------------------------------------
+    # Hair ----------------------------------------------------------------------------
     if is_dan:
-        # High receded hairline (like the reference) keeps the brow bars from
-        # merging into the cap rim.
-        cap = Pos(fx, fy + 0.6, head_c + 0.4) * _ellipsoid(head_r + 1.2, head_r + 1.3)
-        clip = Pos(fx, fy, head_c + 4.6) * Rot(X=-10) * Pos(0, 0, 20) * Box(40, 40, 40)
+        # Steep clip plane: receded at the front, full coverage low in back.
+        cap = Pos(fx, fy + 0.6, head_c + 0.3) * _ellipsoid(head_r + 1.3, head_r + 1.6)
+        clip = Pos(fx, fy, head_c + 1.0) * Rot(X=-25) * Pos(0, 0, 22) * Box(46, 46, 44)
         adds.append(cap & clip)
         # Parallel strand grooves; angled ones converge and pinch off slivers.
         crown = head_c + head_h / 2.0 + 0.6
-        for gx in (-5.1, -1.7, 1.7, 5.1):
-            engraves.append(Pos(fx + gx, fy + 2.0, crown + 0.9) * Box(1.3, 22.0, 3.0))
+        for gx in (-5.4, -1.8, 1.8, 5.4):
+            engraves.append(Pos(fx + gx, fy + 2.0, crown + 0.9) * Box(1.3, 24.0, 3.0))
     else:
-        bob = Pos(fx, fy + 0.8, head_c + 0.2) * _ellipsoid(head_r + 1.7, (head_r + 1.7) * 1.02)
-        clip = Pos(fx, fy, head_c - 6.5) * Pos(0, 0, 20) * Box(44, 44, 40)
-        bob = bob & clip
-        # Open the face window; the bob keeps bangs above the raised brows.
-        bob = bob - Pos(fx, fy - head_r, head_c - 0.5) * Box(15.5, 14.0, 17.0)
+        bob = Pos(fx, fy + 0.8, head_c + 0.1) * _ellipsoid(head_r + 1.8, head_r + 1.4)
+        # Cone bottom at ~40 degrees: the bob tapers to the shoulders and
+        # prints supportless, unlike a flat clipped underside. Exactly 45
+        # degrees sits on the overhang threshold and flags half its facets.
+        taper = Pos(fx, fy + 0.8, head_c - 9.5) * Cone(bottom_radius=4.0, top_radius=26.0, height=26.0)
+        bob = bob & taper
+        # Rounded face window (cylinder cut) instead of a boxy opening.
+        bob = bob - Pos(fx, fy - head_r - 1.0, head_c + 0.8) * Rot(X=90) * Cylinder(8.4, 13.0)
         adds.append(bob)
-        crown = head_c + head_h / 2.0 + 1.0
-        engraves.append(Pos(fx - 2.6, fy + 1.0, crown) * Rot(Z=10) * Box(1.3, 20.0, 3.2))
+        # Side hair lobes carry the bob down past the cheeks to the shoulders.
+        for sx in (-1, 1):
+            adds.append(
+                _capsule_between(
+                    (fx + sx * (head_r - 1.0), fy + 0.5, head_c - 6.5),
+                    (fx + sx * (head_r - 2.2), fy + 0.5, torso_top - 1.0),
+                    3.3,
+                )
+            )
+        crown = head_c + head_h / 2.0 + 1.2
+        engraves.append(Pos(fx - 2.8, fy + 1.0, crown) * Rot(Z=10) * Box(1.3, 22.0, 3.2))
 
-    # Face: sunglasses ridge + lens pads, brows, nose, cheeks, smile ---------------
-    eye_z = head_c + 1.6
+    # Face: open glasses with engraved pupils, brows, nose, cheeks, smile ------------
+    eye_z = head_c + 1.2
     if is_dan:
-        # Two distinct rectangular lenses with a bridge; lens pads overlap the
-        # frame band by ~0.4 mm per side - an exact fit leaves coincident
-        # walls that BOP flags as self-intersections.
         frame = (
-            Pos(-3.85, 0) * RectangleRounded(6.6, 5.0, 1.6)
-            - Pos(-3.85, 0) * RectangleRounded(4.4, 2.8, 0.9)
-            + Pos(3.85, 0) * RectangleRounded(6.6, 5.0, 1.6)
-            - Pos(3.85, 0) * RectangleRounded(4.4, 2.8, 0.9)
-            + RectangleRounded(2.4, 1.4, 0.5)
+            Pos(-4.0, 0) * RectangleRounded(7.0, 5.4, 1.8)
+            - Pos(-4.0, 0) * RectangleRounded(4.6, 3.0, 1.0)
+            + Pos(4.0, 0) * RectangleRounded(7.0, 5.4, 1.8)
+            - Pos(4.0, 0) * RectangleRounded(4.6, 3.0, 1.0)
+            + RectangleRounded(2.6, 1.5, 0.6)
         )
-        lens = Pos(-3.85, 0) * RectangleRounded(5.2, 3.4, 1.1) + Pos(3.85, 0) * RectangleRounded(5.2, 3.4, 1.1)
         adds.append(_front(frame, fx, eye_z, face_y - 1.45, 7.2))
-        adds.append(_front(lens, fx, eye_z, face_y - 0.75, 6.7))
+        pupil_dx = 4.0
     else:
-        ring = (
-            Pos(-3.9, 0) * Circle(4.5)
-            - Pos(-3.9, 0) * Circle(2.9)
-            + Pos(3.9, 0) * Circle(4.5)
-            - Pos(3.9, 0) * Circle(2.9)
+        frame = (
+            Pos(-4.15, 0) * Circle(4.8)
+            - Pos(-4.15, 0) * Circle(3.1)
+            + Pos(4.15, 0) * Circle(4.8)
+            - Pos(4.15, 0) * Circle(3.1)
             + RectangleRounded(3.0, 1.5, 0.6)
         )
-        pads = Pos(-3.9, 0) * Circle(3.1) + Pos(3.9, 0) * Circle(3.1)
-        adds.append(_front(ring, fx, eye_z, face_y - 1.45, 7.2))
-        adds.append(_front(pads, fx, eye_z, face_y - 0.75, 6.7))
+        adds.append(_front(frame, fx, eye_z, face_y - 1.45, 7.2))
+        pupil_dx = 4.15
+
+    # Eyes: engraved pupils inside the open frames - the charm of the target.
+    for sx in (-1, 1):
+        engraves.append(_front(Circle(0.95), fx + sx * pupil_dx, eye_z, face_y - 0.3, 2.2))
 
     # Brows clear the frame tops and stay below hairline/bangs.
-    brow_z = eye_z + (3.4 if is_dan else 5.3)
+    brow_z = eye_z + (3.7 if is_dan else 5.6)
     for sx in (-1, 1):
         adds.append(
-            _front(Rot(Z=sx * 8) * RectangleRounded(4.6, 1.6, 0.7), fx + sx * 4.0, brow_z, face_y - 1.3, 6.5)
+            _front(Rot(Z=sx * 8) * RectangleRounded(4.8, 1.6, 0.7), fx + sx * 4.1, brow_z, face_y - 1.3, 6.5)
         )
 
-    nose_z = eye_z - 3.2
-    adds.append(Pos(fx, face_y + 0.1, nose_z) * _ellipsoid(1.5, 2.2))
+    nose_z = eye_z - 3.4
+    adds.append(Pos(fx, face_y + 0.1, nose_z) * _ellipsoid(1.6, 2.3))
 
-    # Smile: engraved crescent (lune), wide and friendly. Depth tuned to cut
-    # ~1.0 mm into the head but stop short of the jaw/lower-face sphere front;
-    # cutting past a bulge's foremost point slices an orphan wafer off it.
-    smile_z = head_c - head_h * 0.27
-    lune = Circle(2.7) - Pos(0, 1.3) * Circle(2.7)
-    engraves.append(_front(lune, fx, smile_z, face_y - 2.0, 4.5))
+    # Smile: engraved crescent (lune) on the jaw sphere's equator, so the cut
+    # floor lands 1.0-1.7 mm inside the jaw across the whole lune. A smile cut
+    # straddling the jaw/head transition either grazes the head shell at the
+    # lune tips or leaves the jaw dome poking through the groove floor.
+    smile_z = jaw_z
+    jaw_front = jaw_y - jaw_r
+    lune = Circle(2.9) - Pos(0, 1.4) * Circle(2.9)
+    engraves.append(_front(lune, fx, smile_z, face_y - 2.0, (jaw_front + 1.7) - (face_y - 2.0)))
 
     # Cheek pads kept >=0.6 mm clear of the smile cut. Prism extrusions, not
     # spheres: near-tangent spheres stall the OCCT fuse; a grazing smile cut
     # orphans the pad in the STEP export.
     for sx in (-1, 1):
-        adds.append(_front(Circle(1.9), fx + sx * 5.3, smile_z + 1.3, face_y - 0.8, 4.5))
+        adds.append(_front(Circle(2.0), fx + sx * 5.8, smile_z + 1.8, face_y - 0.8, 4.5))
 
     return adds, engraves
 

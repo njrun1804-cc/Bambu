@@ -24,8 +24,8 @@ components:
     constraints: {post_mm: 5.0, net_bar_mm: 2.2, net_opening_mm: 9}
   soccer_ball:
     type: fused_ball
-    placement: front_center_between_figures
-    diameter_mm: 16
+    placement: front_left_fused_to_base_and_dans_foot
+    diameter_mm: 19
     detail: engraved shallow panel lines only
   figures:
     type: toy_caricature_pair

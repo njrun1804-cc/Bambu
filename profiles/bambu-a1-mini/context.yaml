@@ -11,10 +11,32 @@ materials:
   - name: Bambu PLA Basic
     lane_default: easy
     requires_dryness_tracking: false
+    owned_spools:
+      - color: green
+    slicer_filament_profiles:
+      - Bambu PLA Basic @BBL A1M
+    filament_type: PLA
+    density_g_cm3: 1.24
   - name: Bambu PETG HF
     lane_default: functional
     requires_dryness_tracking: true
     drying_note: Dry before use and keep moisture-free during longer prints.
+    owned_spools:
+      - color: blue
+    slicer_filament_profiles:
+      - Bambu PETG HF @BBL A1M
+    filament_type: PETG
+    density_g_cm3: 1.27
+  - name: PLA+
+    lane_default: easy
+    requires_dryness_tracking: false
+    owned_spools:
+      - color: white
+    slicer_filament_profiles:
+      - Generic PLA @BBL A1M
+    filament_type: PLA
+    density_g_cm3: 1.24
+    note: Third-party white PLA+; slice with a generic PLA profile and verify temps.
 plate:
   name: Bambu Dual-Texture PEI Plate
   side_required: explicit

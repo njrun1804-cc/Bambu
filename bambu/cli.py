@@ -126,6 +126,16 @@ def build_parser() -> argparse.ArgumentParser:
     design_check.add_argument("project", type=Path, help="Project directory containing project.yaml.")
     design_check.add_argument("--revision", default="v3", help="Design revision under designs/<revision>.")
     design_check.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
+
+    qc = subparsers.add_parser(
+        "qc",
+        help="Printability QC: supportless overhang check on the STL plus printer/filament checks on the sliced .gcode.3mf.",
+    )
+    qc.add_argument("sliced", type=Path, help="Sliced .gcode.3mf to inspect.")
+    qc.add_argument("--stl", type=Path, default=None, help="Exported STL for overhang analysis.")
+    qc.add_argument("--context", type=Path, default=Path("profiles/bambu-a1-mini/context.yaml"))
+    qc.add_argument("--overhang-budget-mm2", type=float, default=150.0)
+    qc.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
     return parser
 
 
@@ -154,6 +164,8 @@ def main(argv: list[str] | None = None) -> int:
         return _export_build123d(args)
     if args.command == "design-check":
         return _design_check(args)
+    if args.command == "qc":
+        return _qc(args)
 
     raise AssertionError(f"Unhandled command: {args.command}")
 
@@ -392,3 +404,24 @@ def default_world_cup_scene() -> Scene:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def _qc(args: argparse.Namespace) -> int:
+    from bambu.printability import analyze_stl_overhangs, load_printer_context, qc_report_lines, qc_sliced_3mf
+
+    context = load_printer_context(args.context)
+    stl_report = (
+        analyze_stl_overhangs(args.stl, patch_budget_mm2=args.overhang_budget_mm2)
+        if args.stl
+        else {"available": False, "reason": "no --stl provided", "ok": True}
+    )
+    slice_report = qc_sliced_3mf(args.sliced, context=context)
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps({"stl": stl_report, "sliced": slice_report}, indent=2) + "\n")
+    for line in qc_report_lines(stl_report, slice_report):
+        print(line)
+    ok = slice_report.get("ok") and stl_report.get("ok", True)
+    print()
+    print(f"QC: {'pass' if ok else 'FAIL'} (printing remains a manual decision)")
+    return 0 if ok else 1
