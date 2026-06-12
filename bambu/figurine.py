@@ -15,6 +15,7 @@ class Figurine:
     hair: str = "short hair"
     accessories: list[str] = field(default_factory=list)
     jersey_number: str = "10"
+    profile: str = "generic"
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ def generate_scad(scene: Scene) -> str:
     for index, figure in enumerate(scene.figures):
         x = start + index * spacing
         parts.append(_figure_call(figure, x))
+        parts.append(_name_label_call(figure, x))
     return "\n\n".join(parts) + "\n"
 
 
@@ -84,6 +86,11 @@ def _modules() -> str:
             linear_extrude(height=0.9) text(label, size=5.3, halign="center", valign="center");
           translate([-40, 20, 4.1]) cylinder(h=1.1, r=5.5);
           translate([40, 20, 4.1]) cylinder(h=1.1, r=5.5);
+        }
+
+        module base_name_label(label="DAN", x=0) {
+          translate([x, -15.2, 4.22])
+            linear_extrude(height=0.95) text(label, size=5.0, halign="center", valign="center");
         }
 
         module head_shape(head_radius=7.8) {
@@ -188,7 +195,8 @@ def _figure_call(figure: Figurine, x: float) -> str:
     accessories = {slug(item) for item in figure.accessories}
     glasses = "true" if "glasses" in accessories else "false"
     sunglasses = "true" if "sunglasses" in accessories else "false"
-    profile = label if label in {"tall_neighbor", "smiling_neighbor"} else "generic"
+    profile_slug = slug(figure.profile)
+    profile = profile_slug if profile_slug != "generic" else label if label in {"tall_neighbor", "smiling_neighbor"} else "generic"
     body_width = 16.5 if figure.body_shape == "slim" else 21.0 if figure.body_shape == "curvy" else 18.0
     body_depth = 10.5 if figure.body_shape == "slim" else 12.4 if figure.body_shape == "curvy" else 11.0
     number_symbol = f"number_{slug(figure.jersey_number)}"
@@ -199,3 +207,8 @@ def _figure_call(figure: Figurine, x: float) -> str:
         translate([{x:.1f}, 0, 4.0]) figurine(label="{label}", scale_factor={scale_factor:.3f}, number_text={number_symbol}, glasses={glasses}, sunglasses={sunglasses}, profile="{profile}", body_width={body_width:.1f}, body_depth={body_depth:.1f});
         """
     ).strip()
+
+
+def _name_label_call(figure: Figurine, x: float) -> str:
+    label = re.sub(r"[^A-Za-z0-9 +&-]", "", figure.name).strip().upper() or "FRIEND"
+    return f'base_name_label(label="{label}", x={x:.1f});'

@@ -215,20 +215,22 @@ def default_world_cup_scene() -> Scene:
         title="World Cup neighbors",
         figures=[
             Figurine(
-                name="tall_neighbor",
+                name="Dan",
                 height_mm=72,
                 body_shape="slim",
                 hair="short gray hair",
                 accessories=["glasses"],
                 jersey_number="10",
+                profile="tall_neighbor",
             ),
             Figurine(
-                name="smiling_neighbor",
+                name="Carrie",
                 height_mm=64,
                 body_shape="curvy",
                 hair="short light hair",
                 accessories=["sunglasses"],
                 jersey_number="9",
+                profile="smiling_neighbor",
             ),
         ],
     )

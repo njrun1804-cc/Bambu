@@ -26,6 +26,8 @@ class SlicerTests(unittest.TestCase):
         self.assertIn("auto bed leveling", checklist.lower())
         self.assertIn("AMS lite", checklist)
         self.assertIn("Textured PEI", checklist)
+        self.assertIn("actual loaded spool", checklist)
+        self.assertIn("PETG HF", checklist)
 
     def test_orca_slice_plan_can_be_selected(self):
         from bambu.slicer import SliceRequest, build_slice_plan

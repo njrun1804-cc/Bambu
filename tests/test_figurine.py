@@ -54,6 +54,20 @@ class FigurineTests(unittest.TestCase):
         self.assertIn("translate([-26.0", scad)
         self.assertIn("translate([26.0", scad)
 
+    def test_default_scene_prints_dan_and_carrie_name_labels(self):
+        from bambu.cli import default_world_cup_scene
+        from bambu.figurine import generate_scad
+
+        scene = default_world_cup_scene()
+        scad = generate_scad(scene)
+
+        self.assertEqual([figure.name for figure in scene.figures], ["Dan", "Carrie"])
+        self.assertIn("module base_name_label", scad)
+        self.assertIn('base_name_label(label="DAN"', scad)
+        self.assertIn('base_name_label(label="CARRIE"', scad)
+        self.assertIn('profile="tall_neighbor"', scad)
+        self.assertIn('profile="smiling_neighbor"', scad)
+
     def test_rejects_empty_scene(self):
         from bambu.figurine import Scene, generate_scad
 
