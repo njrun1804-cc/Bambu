@@ -14,7 +14,7 @@ The model should read as two stylized adults inspired by the private reference p
   - Carrie: shorter curvier figure with swept light hair, sunglasses, hair-clip cue, jersey number `9`, and a crossbody bag cue
 - Brazil-watch-party treatment through raised paint guides: jersey panels, collar/side trims, numbers, and base title.
 - Top-surface raised name labels for `DAN` and `CARRIE`.
-- Single-material PLA Basic remains the default because the printer/AMS-lite connection is not verified. The raised guides are suitable for post-print painting and can later become color regions if AMS lite is available.
+- Single-material green PLA Basic remains the default first print. The raised guides are suitable for post-print painting and can later become color regions if AMS lite is available.
 
 ## A1 Mini Constraints
 
@@ -23,7 +23,7 @@ The model should read as two stylized adults inspired by the private reference p
 - Arms stay close to the torso to reduce support risk.
 - The shared base is centered and low to help first-layer adhesion.
 - Manual review remains required before any physical print. Use auto bed leveling and flow calibration before the first real print of this model.
-- Match the slicer filament profile to the actual loaded spool. The visible blue spool appears to be PETG HF, so do not print a PLA Basic-sliced job with that spool unless the job is re-sliced for PETG HF. The visible green spool can be used for this file only if it is PLA or the slicer profile is changed to match its actual material.
+- Confirmed local spools: green PLA Basic matches the current `.gcode.3mf`; white PLA+ should use a PLA/PLA+ profile; blue PETG HF requires re-slicing with PETG HF settings and should not be used with the PLA Basic-sliced job.
 
 ## Verification
 

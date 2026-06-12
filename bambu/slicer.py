@@ -78,7 +78,7 @@ def build_slice_plan(request: SliceRequest) -> SlicePlan:
         "Confirm the printer profile is Bambu Lab A1 mini and the bed is Textured PEI Plate.",
         "Use A1 mini auto bed leveling and flow calibration before the first real print of this model.",
         "Use AMS lite color assignment only if the printer is actually connected with AMS lite; otherwise print PLA Basic single-color and paint the raised guides.",
-        "Confirm the slicer filament profile matches the actual loaded spool; if using the visible blue PETG HF spool, re-slice with a PETG HF profile instead of PLA Basic.",
+        "Confirm the slicer filament profile matches the actual loaded spool: green PLA Basic matches this file, white PLA+ needs a PLA/PLA+ profile, and blue PETG HF requires re-slicing with a PETG HF profile.",
         "Keep the 118mm shared base centered on the Textured PEI Plate for adhesion and clearance.",
         "Use manual approval before sending any job to the printer.",
     ]

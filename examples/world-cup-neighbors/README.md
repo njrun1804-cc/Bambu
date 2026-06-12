@@ -31,4 +31,4 @@ The current quality pass uses a shared 118 x 62 mm display base, raised `DAN` an
 openscad -o outputs/world-cup-neighbors-preview.png --imgsize=1600,1200 --viewall --autocenter --camera=0,-90,60,65,0,0,220 outputs/world-cup-neighbors.scad
 ```
 
-Current local filament note: the generated `.gcode.3mf` still uses the PLA Basic profile. If the green spool is PLA, it is the safest first print choice. The blue spool appears to be PETG HF; re-slice with a PETG HF profile before printing with that spool.
+Current local filament note: the generated `.gcode.3mf` uses the PLA Basic profile and matches the green PLA Basic spool. The white spool is PLA+ and should use a PLA/PLA+ profile if used. The blue spool is PETG HF; re-slice with a PETG HF profile before printing with that spool.

@@ -28,6 +28,8 @@ class SlicerTests(unittest.TestCase):
         self.assertIn("Textured PEI", checklist)
         self.assertIn("actual loaded spool", checklist)
         self.assertIn("PETG HF", checklist)
+        self.assertIn("green PLA Basic", checklist)
+        self.assertIn("white PLA+", checklist)
 
     def test_orca_slice_plan_can_be_selected(self):
         from bambu.slicer import SliceRequest, build_slice_plan
