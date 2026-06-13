@@ -3,12 +3,9 @@ slug: world-cup-neighbors
 intent: Stylized Brazil watch-party neighbor figurines for the Bambu Lab A1 mini.
 privacy: public_safe
 lane: build123d
-status: printed_awaiting_feedback
+status: print_feedback
 current_revision: v4.1
-next_safe_action: >
-  record the v4.1 physical result (bambu record-print-result + photos under
-  photos/v4-post-print/), write reviews/009 print feedback, then fold lessons
-  into docs/learning/ and the next revision's specs per docs/learning/README.md
+next_safe_action: revise source from print feedback
 design_revisions:
   v3:
     status: superseded

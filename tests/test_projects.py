@@ -75,7 +75,7 @@ class ProjectTests(unittest.TestCase):
                 next_revision="Add brim and increase slot width by 0.4 mm.",
             )
             measurement = root / "pegboard-hook" / "measurements" / "v001.yaml"
-            review = root / "pegboard-hook" / "reviews" / "004-print-feedback.md"
+            review = root / "pegboard-hook" / "reviews" / "001-print-feedback-v001.md"
 
             self.assertTrue(measurement.exists())
             self.assertTrue(review.exists())

@@ -13,8 +13,7 @@ class WorldCupV2Tests(unittest.TestCase):
         self.assertEqual(project["current_revision"], "v4.1")
         self.assertIn("source/v4/model.py", project["source_files"])
         self.assertIn("source/model.py", project["source_files"])
-        self.assertIn("record-print-result", project["next_safe_action"])
-        self.assertIn("docs/learning/README.md", project["next_safe_action"])
+        self.assertIn("feedback", project["next_safe_action"])
         self.assertEqual(project["design_revisions"]["v3"]["status"], "superseded")
         self.assertIn("printed", project["design_revisions"]["v4"]["status"])
 

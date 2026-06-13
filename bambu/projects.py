@@ -202,12 +202,25 @@ def record_print_result(
     measurements_dir.mkdir(parents=True, exist_ok=True)
     reviews_dir.mkdir(parents=True, exist_ok=True)
     _write_yaml(measurements_dir / f"{revision}.yaml", result)
-    (reviews_dir / "004-print-feedback.md").write_text(_feedback_markdown(result))
+    (reviews_dir / _next_review_name(reviews_dir, f"print-feedback-{revision}")).write_text(
+        _feedback_markdown(result)
+    )
 
     project["status"] = "print_feedback"
     project["next_safe_action"] = "revise source from print feedback" if next_revision else "review print feedback"
     _write_yaml(manifest_path, project)
     return result
+
+
+def _next_review_name(reviews_dir: Path, slug: str) -> str:
+    """Reviews are numbered and append-only; never overwrite earlier evidence."""
+
+    numbers = [
+        int(path.name[:3])
+        for path in reviews_dir.glob("[0-9][0-9][0-9]-*.md")
+        if path.name[:3].isdigit()
+    ]
+    return f"{max(numbers, default=0) + 1:03d}-{slug}.md"
 
 
 def _artifact_entry(base: Path, path: Path) -> dict[str, Any]:
