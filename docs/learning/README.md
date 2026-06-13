@@ -22,6 +22,12 @@ names the loop's current position in `next_safe_action`; start there.
                                     spec defaults, and the next revision's deltas
 ```
 
+Step 9 intake note: phone photos of the print usually land in the macOS
+Photos library (iCloud sync), not Downloads - export/copy them into
+`projects/<slug>/photos/<rev>-post-print/` (gitignored) so the evidence
+lives beside the revision. Reviews are numbered and append-only;
+`record_print_result` enforces this.
+
 Steps 9-11 are the loop's whole point. A print that isn't recorded is a
 print the repo never learns from: v001's feedback ("tree supports scarred
 the face details") is why v2+ fuses everything, and v4's slicer warning is

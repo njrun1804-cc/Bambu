@@ -39,6 +39,12 @@ Run:
 python3 -m unittest discover -s tests -v
 ```
 
+When chaining the suite into a pipeline, do not let a filter mask the exit
+code (`unittest ... | rg OK` exits 0 even on failures); gate on the
+unfiltered run or check the FAILED line explicitly.
+
+Run `uv run ruff check bambu tools tests` after Python changes.
+
 For manual smoke testing:
 
 ```bash
