@@ -50,5 +50,9 @@ uv run bambu qc outputs/world-cup-neighbors-v4.gcode.3mf --stl outputs/world-cup
 uv run bambu-mcp
 ```
 
-Before writing build123d geometry, read `docs/learning/occt-step-geometry-rules.md`;
-before slicing or printing, read `docs/learning/print-path-qc.md`.
+The operating contract is the learning feedback loop in `docs/learning/README.md`:
+specs gate, gates verify, humans print, results get recorded, lessons become
+gates or defaults. Before writing build123d geometry, read
+`docs/learning/occt-step-geometry-rules.md`; before slicing or printing, read
+`docs/learning/print-path-qc.md`. The project manifest's `next_safe_action`
+names the loop's current position - keep it current.

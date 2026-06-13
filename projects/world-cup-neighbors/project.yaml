@@ -3,14 +3,23 @@ slug: world-cup-neighbors
 intent: Stylized Brazil watch-party neighbor figurines for the Bambu Lab A1 mini.
 privacy: public_safe
 lane: build123d
-status: design
-current_revision: v002
-next_safe_action: run bambu design-check projects/world-cup-neighbors --revision v3 before generating v3 CAD
+status: printed_awaiting_feedback
+current_revision: v4.1
+next_safe_action: >
+  record the v4.1 physical result (bambu record-print-result + photos under
+  photos/v4-post-print/), write reviews/009 print feedback, then fold lessons
+  into docs/learning/ and the next revision's specs per docs/learning/README.md
 design_revisions:
   v3:
-    status: spec_ready
+    status: superseded
     source_of_truth: designs/v3/*.yaml
-    next_agent_action: generate build123d components from structured specs
+    note: spec-compiled pipeline; replaced by authored-CAD-with-spec-gates in v4
+  v4:
+    status: printed_2026-06-12_awaiting_feedback
+    source_of_truth: designs/v4/*.yaml (gates) + source/v4/model.py (authored CAD)
+    build_record: reviews/008-v4-build-notes.md
+    sliced: 1h45m, 52.6 g green PLA Basic, 283 layers, supportless
+    next_agent_action: capture physical feedback, then propose v4.2 deltas
 printer:
   model: Bambu Lab A1 mini
   build_volume_mm:
@@ -39,11 +48,13 @@ manual_gates:
 - slicer_review
 - print_start
 source_files:
+- source/v4/model.py
 - source/model.py
 - outputs/world-cup-neighbors.scad
 design_files:
-- designs/v3/design.yaml
-- designs/v3/people.yaml
-- designs/v3/print_constraints.yaml
-- designs/v3/visual_acceptance.yaml
-- designs/v3/build_plan.yaml
+- designs/v4/design.yaml
+- designs/v4/people.yaml
+- designs/v4/print_constraints.yaml
+- designs/v4/visual_acceptance.yaml
+- designs/v4/build_plan.yaml
+- designs/v4/views.yaml

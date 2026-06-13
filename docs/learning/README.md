@@ -1,0 +1,54 @@
+# The learning feedback loop
+
+This repo's value compounds only if every print teaches the next one. The
+loop below is the operating contract for any agent or human doing model
+work here. The project manifest (`projects/<slug>/project.yaml`) always
+names the loop's current position in `next_safe_action`; start there.
+
+## The loop
+
+```text
+1. brief / reference sheets      -> designs/<rev>/*.yaml   (specs are GATES, CAD is authored)
+2. bambu design-check            -> specs complete before geometry
+3. author source/<rev>/model.py  -> read occt-step-geometry-rules.md FIRST
+4. bambu release-check           -> FreeCAD + watertight + overhangs + islands + renders
+5. human approves renders        -> face closeups and deck shots, cavity-shaded
+6. Bambu Studio GUI slice        -> authoritative time/cost (read print-path-qc.md)
+7. bambu qc + bambu handoff      -> supportless, owned filament, plate/nozzle, markers
+8. human starts the print        -> manual gate, always
+9. bambu record-print-result     -> outcome + measurements + photos under photos/
+10. reviews/NNN-*.md             -> what the physical object taught us
+11. fold lessons back            -> docs/learning/*.md rules, gate budgets,
+                                    spec defaults, and the next revision's deltas
+```
+
+Steps 9-11 are the loop's whole point. A print that isn't recorded is a
+print the repo never learns from: v001's feedback ("tree supports scarred
+the face details") is why v2+ fuses everything, and v4's slicer warning is
+why `analyze_islands` exists.
+
+## Where lessons live
+
+- `occt-step-geometry-rules.md` - CAD-side failure catalog. Read before
+  writing build123d geometry; append when a new failure class is paid for.
+- `print-path-qc.md` - print-side judgment: slope vs reachability, bridge
+  classification, slicer trust hierarchy, proven A1 mini setup.
+- `build123d-figurine-workflow.md` - the v2 learning pass that established
+  the figurine lane.
+- `projects/<slug>/reviews/NNN-*.md` - per-revision evidence, numbered and
+  append-only. Build notes before the print, feedback after it.
+
+## Rules for encoding a lesson
+
+- A lesson is symptom + root cause + shipped fix, with the numbers that
+  made it real. "Be careful with tangencies" teaches nothing;
+  "a jaw sphere 0.3 mm off the neck axis self-intersects, exactly coaxial
+  is clean" does.
+- If a lesson can be a GATE, make it one (the island detector, the
+  blocking/informational BOP split, the filament inventory check) and keep
+  the prose as the why. Gates don't forget; docs alone do.
+- If a lesson changes defaults, change them where they execute: spec YAMLs,
+  gate budgets, `profiles/` inventory - not in conversation memory.
+- Update the project manifest's `next_safe_action` whenever the loop
+  advances; a stale manifest sends the next agent two revisions into the
+  past.
