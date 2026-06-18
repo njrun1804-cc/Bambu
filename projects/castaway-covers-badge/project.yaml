@@ -1,0 +1,62 @@
+schema_version: 1
+slug: castaway-covers-badge
+intent: >
+  Small embossed logo badge/plate for Castaway Covers brand — palm tree +
+    beach chair scene with "Castaway Covers" text — for sewing onto boat
+      covers at the corner. Approx 1.77 x 1.1 inches (45 x 28 mm), single-color
+        white, all features raised 0.5 mm for clean embossed look. No painting needed.
+        privacy: public_safe
+        lane: build123d
+        status: design
+        current_revision: v1
+        next_safe_action: export build123d model and review in slicer
+
+        printer:
+          model: Bambu Lab A1 mini
+            build_volume_mm:
+                - 180
+                    - 180
+                        - 180
+                          nozzle_mm: 0.4
+                            max_hotend_c: 300
+                              printer_contact_policy: manual_only
+
+                              material:
+                                name: PLA+
+                                  color: white
+                                    lane_default: easy
+                                      slicer_profile: Generic PLA @BBL A1M
+                                        note: >
+                                            Third-party white PLA+ (owned spool). Slice with Generic PLA profile,
+                                                verify temps before printing. Single color — border, palm tree scene,
+                                                    and text all raised 0.5 mm on white base for embossed badge look.
+
+                                                    plate:
+                                                      name: Bambu Dual-Texture PEI Plate
+                                                        side_required: explicit
+                                                          side: textured
+
+                                                          constraints:
+                                                            dimensions_mm:
+                                                                - width: 45 mm (X) — approx 1.77 inches
+                                                                    - depth: 28 mm (Y) — approx 1.1 inches
+                                                                        - height: 2.5 mm total (2.0 mm base + 0.5 mm relief)
+                                                                          tolerance_notes: >
+                                                                              Decorative sewn badge. Four 2.0 mm sewing holes, one per corner at
+                                                                                  3.5 mm from each edge. All logo features raised 0.5 mm above base.
+                                                                                      No supports needed — completely flat base, all features face up.
+                                                                                          Rounded corners 3 mm radius.
+
+                                                                                          manual_gates:
+                                                                                            - export_review
+                                                                                              - slicer_review
+                                                                                                - print_start
+
+                                                                                                source_files:
+                                                                                                  - source/model.py
+
+                                                                                                  design_files:
+                                                                                                    - designs/v1/design.yaml
+                                                                                                      - designs/v1/print_constraints.yaml
+                                                                                                        - designs/v1/visual_acceptance.yaml
+                                                                                                          - designs/v1/build_plan.yaml
