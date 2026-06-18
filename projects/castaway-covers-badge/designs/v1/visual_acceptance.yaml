@@ -1,0 +1,30 @@
+required_views:
+  - top_flat
+  - top_angled
+  - face_closeup
+  - corner_detail
+
+view_descriptions:
+  top_flat: >-
+    Straight-down view of badge top face. Verify border frame is continuous,
+    text is legible, palm tree scene is recognizable, and sewing holes are
+    correctly placed in all four corners.
+  top_angled: >-
+    45-degree angled view from front-right. Verify 0.5 mm relief is visible
+    and consistent across all raised features.
+  face_closeup: >-
+    Close-up of palm tree and beach chair scene. Verify trunk, fronds, and
+    chair silhouette are distinct and not merged into a blob.
+  corner_detail: >-
+    Close-up of one corner. Verify sewing hole is clean, border meets corner
+    smoothly, and rounded corner radius looks correct.
+
+human_review_questions:
+  - Is the badge overall size correct at approx 45 x 28 mm?
+  - Is the border frame visible and continuous?
+  - Can you read 'Castaway' and 'Covers' clearly?
+- Does the palm tree scene look recognizable (not a blob)?
+  - Are all four sewing holes present and correctly sized at 2 mm?
+  - Does the 0.5 mm relief look sufficient for embossed contrast?
+      - Are the rounded corners smooth with no sharp edges?
+    
