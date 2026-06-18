@@ -2,20 +2,55 @@
   "schema_version": 1,
   "project_slug": "best-buds-chair",
   "revision": "v1",
-  "updated_at": "2026-06-18T22:48:14+00:00",
+  "updated_at": "2026-06-18T23:32:28+00:00",
   "artifacts": [
     {
-      "path": "mesh/woman-head.stl",
-      "kind": "mesh_stl",
-      "sha256": "87c46cb9ede8f8c1d7505b6470be6d37edf485ddc0fc09ba92bf062144ba0131",
-      "bytes": 480334,
+      "path": "outputs/best-buds-chair-v1-body.step",
+      "kind": "cad_step",
+      "sha256": "4bf77f1c03508381b1a1cda1bd740f0ef7a39f540a0a0d36d786dec0508da754",
+      "bytes": 1552491,
       "generated": true
     },
     {
-      "path": "mesh/dog-head.stl",
+      "path": "outputs/best-buds-chair-v1-body.stl",
       "kind": "mesh_stl",
-      "sha256": "6cb288f55afd614bd792ce3df8c08837db95490ef4f4c7c568515cc10e6112cf",
-      "bytes": 642484,
+      "sha256": "df20b35ecfbfdbb6aa438d41d3216d2b6a27e36f7bfd440e8a42089c310baab3",
+      "bytes": 3547234,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair-v1-fused.stl",
+      "kind": "mesh_stl",
+      "sha256": "72be93c18a68dcb4def40bbbe425cf8f49ebe5b89ec4e4c526491750682023ea",
+      "bytes": 2531584,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair-v1.step",
+      "kind": "cad_step",
+      "sha256": "0b17c4a59b732a13cb34a2b5e3cb9f1bb5b2c52cde3938ca08fc4533672688b5",
+      "bytes": 3276528,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair-v1.stl",
+      "kind": "mesh_stl",
+      "sha256": "d7e4b5282c8df7aad095d94f4380666f75df8b2ccb40426665b3e80899d7b0cf",
+      "bytes": 6766884,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair.step",
+      "kind": "cad_step",
+      "sha256": "3991a5ffa77b23d27f96f958a51b43b3a573ab4dfe2fd21ffde583404659af0b",
+      "bytes": 3276528,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair.stl",
+      "kind": "mesh_stl",
+      "sha256": "d7e4b5282c8df7aad095d94f4380666f75df8b2ccb40426665b3e80899d7b0cf",
+      "bytes": 6766884,
       "generated": true
     }
   ]

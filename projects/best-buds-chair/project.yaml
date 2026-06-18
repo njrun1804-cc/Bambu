@@ -6,7 +6,7 @@ lane: hybrid
 archetype: seated_diorama
 status: cad
 current_revision: v1
-next_safe_action: run meshy concept + export-body, then Shapr3D fuse
+next_safe_action: run meshy concept + export-body, then fuse-mesh
 printer:
   model: Bambu Lab A1 mini
   build_volume_mm: [180, 180, 180]

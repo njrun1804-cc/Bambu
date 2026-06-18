@@ -220,6 +220,11 @@ def build_parser() -> argparse.ArgumentParser:
     meshy_repair.add_argument("project", type=Path, help="Project directory.")
     meshy_repair.add_argument("--task-id", default=None, help="Input image-to-3d task id.")
     meshy_repair.add_argument("--subject", default=None, choices=["woman", "dog"])
+    meshy_repair.add_argument(
+        "--download",
+        action="store_true",
+        help="Download repaired STL into mesh/<subject>-head.stl (default when --subject is set).",
+    )
 
     meshy_remesh = meshy_sub.add_parser("remesh", help="Remesh a prior Meshy task to lower polycount.")
     meshy_remesh.add_argument("project", type=Path, help="Project directory.")
@@ -719,20 +724,15 @@ def _meshy(args: argparse.Namespace) -> int:
             print(f"Analyze report: {result['report_path']}")
             return 0
         if args.meshy_command == "repair":
+            from bambu.meshy import meshy_repair_head
+
             client = MeshyClient.from_env()
             if args.task_id:
                 task = client.repair_printability(input_task_id=args.task_id)
                 print(json.dumps(task, indent=2))
             elif args.subject:
-                import yaml
-
-                prov_path = args.project / "mesh" / "provenance.yaml"
-                prov = yaml.safe_load(prov_path.read_text()) if prov_path.exists() else {}
-                task_id = (prov.get("heads", {}).get(args.subject) or {}).get("task_id")
-                if not task_id:
-                    raise MeshyError(f"No task_id for subject {args.subject} in mesh/provenance.yaml")
-                task = client.repair_printability(input_task_id=task_id)
-                print(json.dumps(task, indent=2))
+                result = meshy_repair_head(args.project, subject=args.subject, client=client)
+                print(f"Repaired head STL: {result['stl_path']}")
             else:
                 raise MeshyError("repair requires --task-id or --subject")
             return 0

@@ -138,6 +138,13 @@ class MeshyClient:
         encoded = base64.b64encode(path.read_bytes()).decode("ascii")
         return f"data:{mime};base64,{encoded}"
 
+    def model_data_uri(self, model_path: Path | str) -> str:
+        path = Path(model_path)
+        if not path.exists():
+            raise FileNotFoundError(path)
+        encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        return f"data:application/octet-stream;base64,{encoded}"
+
     def run_figure_prototype(self, image_path: Path | str) -> dict[str, Any]:
         task_id = self.create_task(
             "creative-lab/figure/v1/prototype",
@@ -160,11 +167,25 @@ class MeshyClient:
             body["input_task_id"] = input_task_id
         if model_url:
             body["model_url"] = model_url
+        if not body:
+            raise MeshyError("analyze requires input_task_id or model_url")
         task_id = self.create_task("v1/print/analyze", body)
         return self.poll_task("v1/print/analyze", task_id)
 
-    def repair_printability(self, *, input_task_id: str) -> dict[str, Any]:
-        task_id = self.create_task("v1/print/repair", {"input_task_id": input_task_id})
+    def repair_printability(
+        self,
+        *,
+        input_task_id: str | None = None,
+        model_url: str | None = None,
+    ) -> dict[str, Any]:
+        body: dict[str, Any] = {}
+        if input_task_id:
+            body["input_task_id"] = input_task_id
+        if model_url:
+            body["model_url"] = model_url
+        if not body:
+            raise MeshyError("repair requires input_task_id or model_url")
+        task_id = self.create_task("v1/print/repair", body)
         return self.poll_task("v1/print/repair", task_id)
 
     def remesh(self, *, input_task_id: str, target_polycount: int = 30000) -> dict[str, Any]:
@@ -320,6 +341,48 @@ def meshy_head(
         role=f"head_{subject}",
         meshy_task_id=task_id,
         endpoint="v1/image-to-3d",
+    )
+    return {"stl_path": str(dest), "task": task, "intake": intake}
+
+
+def meshy_repair_head(
+    project_dir: Path | str,
+    *,
+    subject: str,
+    client: MeshyClient | None = None,
+) -> dict[str, Any]:
+    """Repair a head STL via Meshy print/repair and overwrite mesh/<subject>-head.stl."""
+
+    project = Path(project_dir)
+    mesh_client = client or MeshyClient.from_env()
+    dest = project / "mesh" / f"{subject}-head.stl"
+    if not dest.exists():
+        raise FileNotFoundError(dest)
+
+    task = mesh_client.repair_printability(model_url=mesh_client.model_data_uri(dest))
+    urls = mesh_client.extract_model_urls(task)
+    stl_url = urls.get("stl")
+    if not stl_url:
+        raise MeshyError(f"No STL URL in repair task: {list(urls)}")
+    mesh_client.download_url(stl_url, dest)
+    task_id = str(task.get("id") or task.get("task_id") or "")
+
+    provenance_path = project / "mesh" / "provenance.yaml"
+    provenance = yaml.safe_load(provenance_path.read_text()) if provenance_path.exists() else {}
+    provenance.setdefault("repair", {})
+    provenance["repair"][subject] = {
+        "task_id": task_id,
+        "endpoint": "v1/print/repair",
+        "credits": task.get("consumed_credits", 10),
+        "artifact": f"mesh/{subject}-head.stl",
+    }
+    write_mesh_provenance(project, provenance)
+    intake = mesh_intake(
+        project,
+        file=dest,
+        role=f"head_{subject}",
+        meshy_task_id=task_id,
+        endpoint="v1/print/repair",
     )
     return {"stl_path": str(dest), "task": task, "intake": intake}
 

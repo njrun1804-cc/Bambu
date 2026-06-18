@@ -15,7 +15,7 @@ intent:
   design_direction: >
     Seated woman with glasses and layered hair on chunky patio chair; tri-color
     dog in lap with oversized head and floppy ears. Single fused green PLA solid.
-  likeness_strategy: Meshy Pro heads fused in Shapr3D onto build123d body stubs
+  likeness_strategy: Meshy Pro heads fused via bambu fuse-mesh onto build123d body stubs
   first_pass_goal: single-color green PLA readable without paint
 scene:
   props:

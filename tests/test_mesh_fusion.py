@@ -46,6 +46,22 @@ class MeshFusionTests(unittest.TestCase):
         self.assertGreater(len(cleaned.faces), 10)
         self.assertLess(len(cleaned.faces), len(combined.faces))
 
+    def test_trim_mesh_below_z_removes_low_faces(self):
+        from bambu.mesh_fusion import trim_mesh_below_z
+
+        mesh = trimesh.creation.box(extents=[2, 2, 4])
+        mesh.apply_translation([0, 0, 2])
+        trimmed = trim_mesh_below_z(mesh, 1.5)
+        self.assertGreaterEqual(float(trimmed.vertices[:, 2].min()), 1.5)
+
+    def test_repair_fused_mesh_returns_mesh_and_report(self):
+        from bambu.mesh_fusion import repair_fused_mesh
+
+        mesh = trimesh.creation.icosphere(subdivisions=2, radius=1.0)
+        repaired, report = repair_fused_mesh(mesh)
+        self.assertIsInstance(repaired, trimesh.Trimesh)
+        self.assertIn("watertight_manifold", report)
+
     def test_align_head_to_stub_moves_mesh(self):
         from bambu.mesh_fusion import align_head_to_stub
 
@@ -118,11 +134,14 @@ class MeshFusionTests(unittest.TestCase):
             _write_watertight_sphere(head_stl, center=(0.0, 0.0, 0.0), radius=0.3)
 
             with patch("bambu.mesh_fusion.repair_fused_mesh") as repair:
-                repair.return_value = {
-                    "watertight_manifold": True,
-                    "open_edges": 0,
-                    "non_manifold_edges": 0,
-                }
+                repair.return_value = (
+                    trimesh.creation.box(extents=[1, 1, 1]),
+                    {
+                        "watertight_manifold": True,
+                        "open_edges": 0,
+                        "non_manifold_edges": 0,
+                    },
+                )
                 result = fuse_hybrid_project(
                     project,
                     revision="v1",

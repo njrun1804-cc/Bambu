@@ -30,6 +30,17 @@ DEFAULT_HEAD_ROTATIONS: dict[str, tuple[float, float, float]] = {
     "dog": (0.0, 180.0, 0.0),
 }
 
+DEFAULT_MIN_COMPONENT_FACES = 20
+DEFAULT_MIN_COMPONENT_EXTENT_MM = 0.8
+DEFAULT_SEAT_TRIM_MARGIN_MM = 4.0
+DEFAULT_BRIDGE_SINK_OVERLAP_MM = 1.0
+DEFAULT_BRIDGE_TOP_LIFT_MM = 4.0
+DEFAULT_SEAM_WELD_MM = 1.25
+DEFAULT_SEAM_WELD_RADIUS_MM = 14.0
+DEFAULT_SEAM_WELD_Z_BAND_MM = 20.0
+DEFAULT_HEAD_REPAIR_MERGE_PCT = 0.5
+DEFAULT_FUSED_REPAIR_MERGE_PCT = 0.25
+
 
 def seated_diorama_stub_centers() -> dict[str, tuple[float, float, float]]:
     """Alias for manifest scaffolding."""
@@ -43,6 +54,7 @@ class HeadFusionSpec:
     source: Path
     stub_center: tuple[float, float, float]
     target_width_mm: float
+    bridge_center: tuple[float, float, float] | None = None
     scale: float = 1.0
     sink_mm: float = DEFAULT_SINK_MM
     rotation_deg: tuple[float, float, float] = (-90.0, 0.0, 0.0)
@@ -74,7 +86,11 @@ def fuse_hybrid_project(
 
     specs = _load_head_specs(project, fusion, repo_root, revision=rev)
     fused_mesh = fuse_head_specs(body_mesh, specs)
-    mesh_report = repair_fused_mesh(fused_mesh) if repair else _mesh_report(fused_mesh)
+    stub_centers = [spec.stub_center for spec in specs]
+    if repair:
+        fused_mesh, mesh_report = repair_fused_mesh(fused_mesh, stub_centers=stub_centers)
+    else:
+        mesh_report = _mesh_report(fused_mesh)
 
     fused_rel = fusion.get("fused_artifact", f"outputs/{manifest['slug']}-{rev.split('.')[0]}-fused.stl")
     fused_path = output_path or _resolve_project_path(project, repo_root, fused_rel, outputs_root=outputs_root)
@@ -138,35 +154,60 @@ def fuse_project_meshes(*args: Any, **kwargs: Any) -> dict[str, Any]:
 
 
 def fuse_head_specs(body: trimesh.Trimesh, specs: list[HeadFusionSpec]) -> trimesh.Trimesh:
-    """Align each head spec and merge onto the body mesh."""
+    """Align each head spec, bridge neck seams, and merge onto the body mesh."""
 
     heads: list[trimesh.Trimesh] = []
+    bridges: list[trimesh.Trimesh] = []
     for spec in specs:
         raw = trimesh.load(spec.source, force="mesh")
         if not isinstance(raw, trimesh.Trimesh):
             raise ValueError(f"Head mesh must be a single Trimesh: {spec.source}")
         cleaned = clean_head_mesh(raw)
-        heads.append(
-            align_head_to_stub(
-                cleaned,
-                spec.stub_center,
-                target_width_mm=spec.target_width_mm,
-                scale=spec.scale,
-                sink_mm=spec.sink_mm,
-                rotation_deg=spec.rotation_deg,
-            )
+        cleaned = repair_head_mesh(cleaned)
+        aligned = align_head_to_stub(
+            cleaned,
+            spec.stub_center,
+            target_width_mm=spec.target_width_mm,
+            scale=spec.scale,
+            sink_mm=spec.sink_mm,
+            rotation_deg=spec.rotation_deg,
         )
-    return merge_meshes(body, heads)
+        seat_z = _seat_trim_z(spec)
+        trimmed = trim_mesh_below_z(aligned, seat_z)
+        heads.append(trimmed)
+        bridges.append(neck_bridge(spec, seat_z - DEFAULT_BRIDGE_SINK_OVERLAP_MM))
+    fused = merge_meshes(body, [*heads, *bridges])
+    return cull_small_components(fused)
 
 
-def clean_head_mesh(mesh: trimesh.Trimesh, *, min_faces: int = 50) -> trimesh.Trimesh:
+def clean_head_mesh(
+    mesh: trimesh.Trimesh,
+    *,
+    min_faces: int = 50,
+    min_extent_mm: float = DEFAULT_MIN_COMPONENT_EXTENT_MM,
+) -> trimesh.Trimesh:
     """Drop tiny floating components from Meshy exports."""
+
+    return cull_small_components(mesh, min_faces=min_faces, min_extent_mm=min_extent_mm)
+
+
+def cull_small_components(
+    mesh: trimesh.Trimesh,
+    *,
+    min_faces: int = DEFAULT_MIN_COMPONENT_FACES,
+    min_extent_mm: float = DEFAULT_MIN_COMPONENT_EXTENT_MM,
+) -> trimesh.Trimesh:
+    """Remove disconnected crumbs that fail island or manifold gates."""
 
     parts = mesh.split(only_watertight=False)
     if len(parts) <= 1:
         cleaned = mesh.copy()
     else:
-        keep = [part for part in parts if len(part.faces) >= min_faces]
+        keep = [
+            part
+            for part in parts
+            if len(part.faces) >= min_faces and max(float(axis) for axis in part.extents) >= min_extent_mm
+        ]
         if not keep:
             keep = [max(parts, key=lambda part: len(part.faces))]
         cleaned = trimesh.util.concatenate(keep) if len(keep) > 1 else keep[0]
@@ -174,6 +215,38 @@ def clean_head_mesh(mesh: trimesh.Trimesh, *, min_faces: int = 50) -> trimesh.Tr
     cleaned.update_faces(cleaned.unique_faces())
     cleaned.remove_unreferenced_vertices()
     return cleaned
+
+
+def trim_mesh_below_z(mesh: trimesh.Trimesh, z_min: float) -> trimesh.Trimesh:
+    """Drop faces whose lowest vertex sits below the seating plane."""
+
+    keep = [
+        face_idx
+        for face_idx, tri in enumerate(mesh.faces)
+        if float(mesh.vertices[tri, 2].min()) >= z_min
+    ]
+    if len(keep) == len(mesh.faces):
+        return mesh
+    trimmed = mesh.copy()
+    trimmed.update_faces(keep)
+    trimmed.remove_unreferenced_vertices()
+    return trimmed
+
+
+def neck_bridge(spec: HeadFusionSpec, z_bottom: float) -> trimesh.Trimesh:
+    """Cylinder spanning the neck stub so head and body share standing material."""
+
+    center = spec.bridge_center or spec.stub_center
+    radius = max(spec.target_width_mm * 0.35, 4.0)
+    z_top = max(spec.stub_center[2], center[2]) + DEFAULT_BRIDGE_TOP_LIFT_MM
+    height = max(z_top - z_bottom, 2.0)
+    bridge = trimesh.creation.cylinder(radius=radius, height=height, sections=24)
+    bridge.apply_translation([center[0], center[1], z_bottom + height / 2.0])
+    return bridge
+
+
+def _seat_trim_z(spec: HeadFusionSpec) -> float:
+    return max(1.0, spec.stub_center[2] - spec.sink_mm - DEFAULT_SEAT_TRIM_MARGIN_MM)
 
 
 def align_head_to_stub(
@@ -211,29 +284,124 @@ def merge_meshes(body: trimesh.Trimesh, heads: list[trimesh.Trimesh]) -> trimesh
     return combined
 
 
-def repair_fused_mesh(mesh: trimesh.Trimesh) -> dict[str, Any]:
-    """Best-effort repair pass; returns mesh gate metrics."""
+def repair_head_mesh(mesh: trimesh.Trimesh, *, merge_pct: float = DEFAULT_HEAD_REPAIR_MERGE_PCT) -> trimesh.Trimesh:
+    """Pre-repair Meshy head exports before alignment."""
 
-    repaired = mesh.copy()
-    repaired.merge_vertices()
-    repaired.update_faces(repaired.unique_faces())
-    repaired.remove_unreferenced_vertices()
     try:
-        import pymeshlab  # optional
+        return _pymeshlab_repair(mesh, merge_pct=merge_pct)
+    except Exception:
+        return mesh.copy()
 
-        with _temporary_stl(repaired, label="input") as stl_path, _temporary_stl(repaired, label="repaired") as out_path:
-            ms = pymeshlab.MeshSet()
-            ms.load_new_mesh(str(stl_path))
-            ms.apply_filter("meshing_remove_duplicate_vertices")
-            ms.apply_filter("meshing_remove_duplicate_faces")
-            ms.apply_filter("meshing_merge_close_vertices", threshold=pymeshlab.PercentageValue(0.25))
-            ms.apply_filter("meshing_repair_non_manifold_edges", method=0)
-            ms.apply_filter("meshing_close_holes", maxholesize=500)
-            ms.save_current_mesh(str(out_path))
-            repaired = trimesh.load(out_path, force="mesh")
+
+def repair_fused_mesh(
+    mesh: trimesh.Trimesh,
+    *,
+    stub_centers: list[tuple[float, float, float]] | None = None,
+) -> tuple[trimesh.Trimesh, dict[str, Any]]:
+    """Best-effort repair pass; returns the repaired mesh and gate metrics."""
+
+    repaired = cull_small_components(mesh.copy())
+    if stub_centers:
+        repaired = regional_seam_weld(
+            repaired,
+            stub_centers,
+            radius_mm=DEFAULT_SEAM_WELD_RADIUS_MM,
+            z_band_mm=DEFAULT_SEAM_WELD_Z_BAND_MM,
+            weld_mm=DEFAULT_SEAM_WELD_MM,
+        )
+    try:
+        repaired = _pymeshlab_repair(repaired, merge_pct=DEFAULT_FUSED_REPAIR_MERGE_PCT)
+        repaired = cull_small_components(repaired)
     except Exception:
         repaired.fill_holes()
-    return _mesh_report(repaired)
+    return repaired, _mesh_report(repaired)
+
+
+def regional_seam_weld(
+    mesh: trimesh.Trimesh,
+    stub_centers: list[tuple[float, float, float]],
+    *,
+    radius_mm: float = DEFAULT_SEAM_WELD_RADIUS_MM,
+    z_band_mm: float = DEFAULT_SEAM_WELD_Z_BAND_MM,
+    weld_mm: float = DEFAULT_SEAM_WELD_MM,
+) -> trimesh.Trimesh:
+    """Weld vertices near neck stubs so head and body share mesh connectivity."""
+
+    from scipy.spatial import cKDTree
+
+    verts = np.asarray(mesh.vertices, dtype=float)
+    faces = np.asarray(mesh.faces)
+    count = len(verts)
+    in_region = np.zeros(count, dtype=bool)
+    radius_sq = float(radius_mm) ** 2
+    for stub in stub_centers:
+        sx, sy, sz = stub
+        for index, (x, y, z) in enumerate(verts):
+            if abs(z - sz) <= z_band_mm and (x - sx) ** 2 + (y - sy) ** 2 <= radius_sq:
+                in_region[index] = True
+
+    parent = np.arange(count)
+
+    def find(index: int) -> int:
+        while parent[index] != index:
+            parent[index] = parent[parent[index]]
+            index = parent[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        root_left, root_right = find(left), find(right)
+        if root_left != root_right:
+            parent[root_right] = root_left
+
+    for left, right in cKDTree(verts).query_pairs(r=float(weld_mm)):
+        if in_region[left] or in_region[right]:
+            union(left, right)
+
+    groups: dict[int, list[int]] = {}
+    for index in range(count):
+        groups.setdefault(find(index), []).append(index)
+
+    new_index: dict[int, int] = {}
+    new_vertices: list[np.ndarray] = []
+    for members in groups.values():
+        merged = index = len(new_vertices)
+        new_vertices.append(verts[members].mean(axis=0))
+        for member in members:
+            new_index[member] = merged
+
+    remapped = np.vectorize(new_index.__getitem__)(faces)
+    valid = np.apply_along_axis(lambda tri: len({tri[0], tri[1], tri[2]}) == 3, 1, remapped)
+    welded = trimesh.Trimesh(vertices=np.asarray(new_vertices), faces=remapped[valid], process=False)
+    welded.remove_unreferenced_vertices()
+    return welded
+
+
+def _pymeshlab_repair(mesh: trimesh.Trimesh, *, merge_pct: float) -> trimesh.Trimesh:
+    import pymeshlab
+
+    with _temporary_stl(mesh, label="input") as stl_path, _temporary_stl(mesh, label="repaired") as out_path:
+        ms = pymeshlab.MeshSet()
+        ms.load_new_mesh(str(stl_path))
+        ms.apply_filter("meshing_remove_duplicate_vertices")
+        ms.apply_filter("meshing_remove_duplicate_faces")
+        ms.apply_filter("meshing_remove_unreferenced_vertices")
+        ms.apply_filter("meshing_merge_close_vertices", threshold=pymeshlab.PercentageValue(merge_pct))
+        ms.apply_filter("meshing_repair_non_manifold_edges", method=0)
+        ms.apply_filter("meshing_repair_non_manifold_vertices")
+        ms.apply_filter("meshing_close_holes", maxholesize=500)
+        for filter_name, kwargs in (
+            ("meshing_remove_connected_component_by_face_number", {"mincomponentsize": 20}),
+            ("meshing_remove_connected_component_by_diameter", {"mincomponentdiag": pymeshlab.PercentageValue(1.0)}),
+        ):
+            try:
+                ms.apply_filter(filter_name, **kwargs)
+            except Exception:
+                pass
+        ms.save_current_mesh(str(out_path))
+        repaired = trimesh.load(out_path, force="mesh")
+    if not isinstance(repaired, trimesh.Trimesh):
+        raise ValueError("pymeshlab repair did not return a Trimesh")
+    return repaired
 
 
 def _load_head_specs(
@@ -262,6 +430,7 @@ def _load_head_specs(
             float(align.get("y", stub_center[1])),
             float(align.get("z", stub_center[2])),
         )
+        bridge_center = stub_center if anchor != stub_center else None
         source = _resolve_project_path(project, repo_root, entry.get("source", ""))
         if not source.exists():
             raise FileNotFoundError(f"Head mesh missing for {head_id}: {source}")
@@ -277,6 +446,7 @@ def _load_head_specs(
                 head_id=head_id,
                 source=source,
                 stub_center=anchor,
+                bridge_center=bridge_center,
                 target_width_mm=target_width,
                 scale=1.0,
                 sink_mm=float(align.get("sink_mm", DEFAULT_SINK_MM)),

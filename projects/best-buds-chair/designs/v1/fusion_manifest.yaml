@@ -35,6 +35,6 @@ head_meshes:
     - 0
 fused_artifact: outputs/best-buds-chair-v1-fused.stl
 fusion_tool: bambu
-fusion_status: complete_with_warnings
+fusion_status: complete
 fusion_strategy: merge
-fusion_completed_at: '2026-06-18T23:24:04+00:00'
+fusion_completed_at: '2026-06-18T23:32:28+00:00'
