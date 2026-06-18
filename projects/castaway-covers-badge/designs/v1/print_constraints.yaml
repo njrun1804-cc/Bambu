@@ -1,0 +1,37 @@
+printer:
+  model: Bambu Lab A1 mini
+    build_volume_mm:
+        x: 180
+            y: 180
+                z: 180
+                  nozzle_mm: 0.4
+                    printer_contact_allowed: false
+
+                    material:
+                      name: PLA+
+                        color: white
+                          slicer_profile: Generic PLA @BBL A1M
+                            filament_type: PLA
+
+                            plate:
+                              name: Bambu Dual-Texture PEI Plate
+                                side: textured
+
+                                target_model:
+                                  max_size_mm:
+                                      x: 45
+                                          y: 28
+                                              z: 3
+                                                actual_size_mm:
+                                                    x: 45
+                                                        y: 28
+                                                            z: 2.5
+                                                              supports_required: false
+                                                                layer_height_mm: 0.2
+                                                                  infill_percent: 20
+                                                                    shell_count: 3
+                                                                      note: >-
+                                                                          Flat base plate with raised relief. No supports needed.
+                                                                              All features face up. Print orientation: base flat on plate.
+                                                                                  Slicer profile: 0.20mm Standard @BBL A1M with Generic PLA filament.
+                                                                                  
