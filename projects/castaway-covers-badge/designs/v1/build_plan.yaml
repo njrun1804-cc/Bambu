@@ -1,0 +1,40 @@
+review_tools:
+  agent:
+      - FreeCAD
+          - Blender
+            manual:
+                - Bambu Studio
+
+                cad_lane: build123d
+                source_file: source/model.py
+
+                export_sequence:
+                  - step: export STEP and STL
+                      command: uv run bambu export-build123d projects/castaway-covers-badge --output-dir outputs
+                        - step: review 3D model geometry
+                            command: uv run python tools/review_3d.py projects/castaway-covers-badge
+                              - step: open in Bambu Studio and slice
+                                  note: >-
+                                        Use Generic PLA @BBL A1M profile. Layer height 0.20mm Standard.
+                                              Textured PEI plate, textured side up. No supports. Verify bounding
+                                                    box is 45 x 28 x 2.5 mm before slicing.
+                                                      - step: run QC check
+                                                          command: uv run bambu qc <sliced.3mf> --stl outputs/castaway-covers-badge.stl
+                                                            - step: print after manual review
+                                                                note: Human decision only. Do not automate printer contact.
+
+                                                                next_agent_actions:
+                                                                  - Run export gate against designs/v1/*.yaml and source/model.py
+                                                                    - Review FreeCAD STEP validity report for watertight solid
+                                                                      - Review Blender preview PNGs for visual acceptance
+                                                                        - Flag any geometry issues in reviews/ before slicing
+
+                                                                        print_checklist:
+                                                                          - White PLA+ spool loaded
+                                                                            - Textured PEI plate installed, textured side up
+                                                                              - Generic PLA profile selected in Bambu Studio
+                                                                                - Bounding box confirmed as 45 x 28 x 2.5 mm in slicer
+                                                                                  - No supports generated
+                                                                                    - First layer preview looks correct
+                                                                                      - Print manually initiated after slicer review
+                                                                                      
