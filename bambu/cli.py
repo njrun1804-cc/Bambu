@@ -8,7 +8,7 @@ from pathlib import Path
 import shlex
 import sys
 
-from bambu.design_pipeline import load_design_spec, validate_design_spec
+from bambu.design_pipeline import load_design_spec, render_spec_sheet, validate_design_spec
 from bambu.figurine import Figurine, Scene, generate_scad
 from bambu.handoff import inspect_print_handoff
 from bambu.preflight import detect_tools, next_steps
@@ -151,6 +151,31 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--no-render", action="store_true", help="Skip Blender preview rendering.")
     release.add_argument("--outputs-root", type=Path, default=Path("outputs"))
     release.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
+
+    from bambu.intake import archetypes_with_templates
+
+    intake = subparsers.add_parser(
+        "intake",
+        help="Photo-first intake: scaffold project, copy reference photo, emit agent prompt.",
+    )
+    intake.add_argument("photo", type=Path, help="Reference photo path.")
+    intake.add_argument("--intent", required=True, help="Plain-English print intent.")
+    intake.add_argument("--slug", help="Project slug (defaults from intent).")
+    intake.add_argument("--root", type=Path, default=Path("projects"), help="Projects root.")
+    intake.add_argument(
+        "--archetype",
+        default=None,
+        choices=archetypes_with_templates(),
+        help="Scene archetype with spec templates (defaults from intent keywords).",
+    )
+
+    spec_sheet = subparsers.add_parser(
+        "render-spec-sheet",
+        help="Render a one-page markdown design sheet from YAML for human sign-off.",
+    )
+    spec_sheet.add_argument("project", type=Path, help="Project directory.")
+    spec_sheet.add_argument("--revision", default="v1", help="Design revision.")
+    spec_sheet.add_argument("--output", type=Path, default=None, help="Optional output markdown path.")
     return parser
 
 
@@ -183,6 +208,10 @@ def main(argv: list[str] | None = None) -> int:
         return _qc(args)
     if args.command == "release-check":
         return _release_check(args)
+    if args.command == "intake":
+        return _intake(args)
+    if args.command == "render-spec-sheet":
+        return _render_spec_sheet(args)
 
     raise AssertionError(f"Unhandled command: {args.command}")
 
@@ -472,6 +501,10 @@ def _release_check(args: argparse.Namespace) -> int:
     views = None
     if args.views:
         views = yaml.safe_load(args.views.read_text())["views"]
+    elif args.revision:
+        from bambu.review3d import load_review_views
+
+        views = load_review_views(args.project, revision=args.revision)
     review = review_project_3d(
         args.project,
         outputs_root=args.outputs_root,
@@ -479,6 +512,7 @@ def _release_check(args: argparse.Namespace) -> int:
         source_file=args.source_file,
         output_slug=args.output_slug,
         views=views,
+        revision=args.revision,
     )
     freecad = review.get("freecad", {})
     mesh = review.get("mesh", {})
@@ -546,3 +580,44 @@ def _release_check(args: argparse.Namespace) -> int:
     print("Next: slice, then `bambu qc <sliced.gcode.3mf> --stl <model.stl>`, then `bambu handoff`.")
     print(review.get("manual_boundary", ""))
     return 0 if all_ok else 1
+
+
+def _intake(args: argparse.Namespace) -> int:
+    from bambu.intake import classify_archetype_from_intent, run_intake
+
+    archetype = args.archetype or classify_archetype_from_intent(args.intent)
+    result = run_intake(
+        args.photo,
+        intent=args.intent,
+        slug=args.slug,
+        root=args.root,
+        archetype=archetype,
+    )
+    print("Photo intake")
+    print("------------")
+    print(f"project: {result['project_dir']}")
+    print(f"archetype: {result['archetype']}")
+    print(f"reference photo: {result['reference_photo']}")
+    print()
+    print("Next steps")
+    print("----------")
+    for step in result["next_steps"]:
+        print(f"- {step}")
+    print()
+    print("Agent prompt (also in agents/prompts/intake-from-photo.md)")
+    print("-----------------------------------------------------------")
+    print(result["agent_prompt"][:2000])
+    if len(result["agent_prompt"]) > 2000:
+        print("... (truncated)")
+    return 0
+
+
+def _render_spec_sheet(args: argparse.Namespace) -> int:
+    sheet = render_spec_sheet(args.project, revision=args.revision)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(sheet + "\n")
+        print(f"Wrote {args.output}")
+    else:
+        print(sheet)
+    return 0

@@ -40,7 +40,16 @@ def create_project(
 
     project_slug = slug or slugify(intent)
     project_dir = root / project_slug
-    for child in ("source", "reviews", "measurements", "photos"):
+    for child in (
+        "source",
+        "source/v1",
+        "designs/v1",
+        "references",
+        "references/ai-concepts",
+        "reviews",
+        "measurements",
+        "photos",
+    ):
         directory = project_dir / child
         directory.mkdir(parents=True, exist_ok=True)
         (directory / ".gitkeep").touch()
@@ -48,14 +57,15 @@ def create_project(
     context = context_view()
     selected_material = _select_material(context["materials"], material)
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "slug": project_slug,
         "intent": intent,
         "privacy": privacy,
         "lane": lane,
+        "archetype": "seated_diorama" if lane == "build123d" else "",
         "status": "design",
-        "current_revision": "v001",
-        "next_safe_action": "complete design gate",
+        "current_revision": "v1" if lane == "build123d" else "v001",
+        "next_safe_action": "run bambu intake or complete design gate",
         "printer": context["printer"],
         "material": selected_material,
         "plate": {**context["plate"], "side": plate_side},
@@ -71,8 +81,9 @@ def create_project(
         raise ValueError("; ".join(errors))
 
     _write_yaml(project_dir / "project.yaml", manifest)
+    rev = manifest["current_revision"]
     if not (project_dir / "artifacts.json").exists():
-        write_artifact_manifest(project_dir / "artifacts.json", project_slug=project_slug, revision="v001", paths=[])
+        write_artifact_manifest(project_dir / "artifacts.json", project_slug=project_slug, revision=rev, paths=[])
     return manifest
 
 
@@ -270,7 +281,7 @@ def _select_material(materials: list[dict[str, Any]], name: str) -> dict[str, An
 
 def _default_source_files(lane: str) -> list[str]:
     if lane == "build123d":
-        return ["source/model.py"]
+        return ["source/v1/model.py"]
     if lane == "openscad":
         return ["source/model.scad"]
     return ["source/model.scad"]

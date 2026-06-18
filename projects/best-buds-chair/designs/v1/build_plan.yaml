@@ -1,0 +1,12 @@
+schema_version: 2
+review_tools:
+  agent:
+    - FreeCAD
+    - Blender
+  manual:
+    - Bambu Studio
+generated_outputs_prefix: outputs/best-buds-chair
+next_agent_actions:
+  - Refine source/v1/model.py against designs/v1/*.yaml if release-check fails
+  - Run bambu release-check projects/best-buds-chair --revision v1
+  - Human approves 150px thumbnail and face closeups before GUI slice

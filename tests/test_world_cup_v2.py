@@ -5,9 +5,12 @@ from pathlib import Path
 import yaml
 
 
+ARCHIVE = Path("projects/_archive/world-cup-neighbors")
+
+
 class WorldCupV2Tests(unittest.TestCase):
     def test_project_manifest_tracks_current_revision_and_loop_position(self):
-        project = yaml.safe_load(Path("projects/world-cup-neighbors/project.yaml").read_text())
+        project = yaml.safe_load((ARCHIVE / "project.yaml").read_text())
 
         self.assertEqual(project["lane"], "build123d")
         self.assertEqual(project["current_revision"], "v4.1")
@@ -18,8 +21,8 @@ class WorldCupV2Tests(unittest.TestCase):
         self.assertIn("printed", project["design_revisions"]["v4"]["status"])
 
     def test_v2_learning_docs_exist_and_capture_print_lessons(self):
-        source_readme = Path("projects/world-cup-neighbors/source/README.md").read_text()
-        review = Path("projects/world-cup-neighbors/reviews/005-v2-build123d-design-notes.md").read_text()
+        source_readme = (ARCHIVE / "source/README.md").read_text()
+        review = (ARCHIVE / "reviews/005-v2-build123d-design-notes.md").read_text()
         learning = Path("docs/learning/build123d-figurine-workflow.md").read_text()
         root_readme = Path("README.md").read_text()
 
@@ -32,7 +35,7 @@ class WorldCupV2Tests(unittest.TestCase):
         self.assertIn("World Cup neighbors v2", root_readme)
 
     def test_artifact_manifest_records_v2_build123d_outputs(self):
-        artifacts = json.loads(Path("projects/world-cup-neighbors/artifacts.json").read_text())
+        artifacts = json.loads((ARCHIVE / "artifacts.json").read_text())
 
         self.assertEqual(artifacts["revision"], "v002")
         kinds = {entry["kind"] for entry in artifacts["artifacts"]}

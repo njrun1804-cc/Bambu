@@ -1,0 +1,45 @@
+schema_version: 2
+design_id: best-buds-chair-v1
+revision: v1
+archetype: seated_diorama
+agentic_pipeline:
+  source_of_truth: authored_cad_with_spec_gates
+  primary_operator: cursor_agent
+  human_role: approve_renders_then_slice_review_then_manual_print
+  cad_source: source/v1/model.py
+  contract: >
+    Specs gate acceptance; hand-authored build123d owns fusion geometry.
+intent:
+  gift_context: Woman with tri-color dog on patio chair — "Best Buds" diorama.
+  emotional_target: warm, playful, instantly recognizable at thumbnail size
+  design_direction: >
+    Seated woman with glasses and layered hair on chunky patio chair; tri-color
+    dog in lap with oversized head and floppy ears. Single fused green PLA solid.
+  likeness_strategy: caricature cues from private patio photo, not portrait sculpture
+  first_pass_goal: single-color green PLA readable without paint
+scene:
+  props:
+    - chair
+    - base
+    - nameplate
+  furniture:
+    - id: chair
+      type: chunky_patio_chair
+      note: cushion back, no wicker weave
+must_preserve:
+  - woman with glasses ridge and layered hair cap
+  - tri-color dog with floppy ears and white chest patch paint zone
+  - chunky patio chair frame fused to figures
+  - BEST BUDS nameplate on base front
+  - A1 mini fit 118 x 65 x 68 mm envelope
+forbidden_traps:
+  - hair strands as free geometry
+  - separate eyeglass frames
+  - thin dog legs
+  - wicker weave or lattice thinner than 2 mm
+  - floating lap props
+  - multi-solid compounds
+reference_inputs:
+  intake_photo:
+    path: references/intake.yaml
+    role: primary likeness reference (photos/reference/ gitignored)

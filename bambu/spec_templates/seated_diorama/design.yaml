@@ -1,0 +1,39 @@
+schema_version: 2
+design_id: CHANGE_ME-slug-v1
+revision: v1
+archetype: seated_diorama
+agentic_pipeline:
+  source_of_truth: authored_cad_with_spec_gates
+  primary_operator: cursor_agent
+  human_role: approve_renders_then_slice_review_then_manual_print
+  cad_source: source/v1/model.py
+  contract: >
+    Specs are requirements and acceptance gates. build123d source is hand-authored
+    parametric code whose PARAMS cite these numbers. Validate against specs after building.
+intent:
+  gift_context: ""
+  emotional_target: cute, recognizable, playful, print-safe
+  design_direction: >
+    Seated diorama caricature readable at thumbnail size in single green PLA.
+  likeness_strategy: recognizable caricature cues from reference photo, not portrait sculpture
+  first_pass_goal: single-color green PLA print that reads without paint
+scene:
+  props:
+    - chair
+    - base
+    - optional nameplate
+  furniture:
+    - id: chair
+      type: chunky_patio_chair
+      note: no wicker weave; structural fusion to figures
+must_preserve: []
+forbidden_traps:
+  - hair strands as free geometry
+  - separate eyeglass frames
+  - thin dog legs
+  - wicker weave or lattice thinner than 2 mm
+  - floating lap props
+reference_inputs:
+  intake_photo:
+    path: references/intake.yaml
+    role: primary likeness and composition reference (gitignored photos/)

@@ -1,0 +1,12 @@
+schema_version: 2
+review_tools:
+  agent:
+    - FreeCAD
+    - Blender
+  manual:
+    - Bambu Studio
+generated_outputs_prefix: outputs/CHANGE_ME
+next_agent_actions:
+  - Fill designs/v1/*.yaml from reference photo vision
+  - Author source/v1/model.py using bambu.cad.archetypes.seated_diorama helpers
+  - Run bambu design-check then bambu release-check --revision v1

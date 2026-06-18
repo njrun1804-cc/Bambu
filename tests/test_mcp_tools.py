@@ -151,7 +151,7 @@ class McpToolTests(unittest.TestCase):
     def test_mcp_design_check_exposes_agentic_v3_gate(self):
         from bambu.mcp_server import bambu_design_check
 
-        result = bambu_design_check("projects/world-cup-neighbors", revision="v3")
+        result = bambu_design_check("projects/_archive/world-cup-neighbors", revision="v3")
 
         self.assertTrue(result["ok"])
         self.assertEqual(result["printer"]["model"], "Bambu Lab A1 mini")

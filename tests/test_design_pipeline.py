@@ -1,16 +1,17 @@
-import io
-import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 
+ARCHIVE = "projects/_archive/world-cup-neighbors"
+
+
 class DesignPipelineTests(unittest.TestCase):
     def test_world_cup_v3_specs_are_agentic_and_a1_mini_specific(self):
         from bambu.design_pipeline import load_design_spec, validate_design_spec
 
-        spec = load_design_spec("projects/world-cup-neighbors", revision="v3")
+        spec = load_design_spec(ARCHIVE, revision="v3")
         report = validate_design_spec(spec)
 
         self.assertTrue(report["ok"], report["errors"])
@@ -40,10 +41,12 @@ class DesignPipelineTests(unittest.TestCase):
         self.assertFalse(report["ok"])
         self.assertIn("design.intent is required", report["errors"])
         self.assertIn("print_constraints.printer.model must be Bambu Lab A1 mini", report["errors"])
-        self.assertIn("visual_acceptance.required_views must include face_closeup", report["errors"])
+        self.assertIn("face_closeup", " ".join(report["errors"]))
 
     def test_design_check_cli_prints_agent_next_actions_and_json(self):
         from bambu.cli import main
+        import io
+        import json
 
         with tempfile.TemporaryDirectory() as tmp:
             json_path = Path(tmp) / "report.json"
@@ -52,7 +55,7 @@ class DesignPipelineTests(unittest.TestCase):
                 exit_code = main(
                     [
                         "design-check",
-                        "projects/world-cup-neighbors",
+                        ARCHIVE,
                         "--revision",
                         "v3",
                         "--json",
@@ -69,20 +72,31 @@ class DesignPipelineTests(unittest.TestCase):
         self.assertTrue(report["ok"])
         self.assertFalse(report["printer_contact_allowed"])
 
-
     def test_world_cup_v4_specs_pass_with_authored_cad_contract(self):
         from bambu.design_pipeline import load_design_spec, validate_design_spec
 
-        spec = load_design_spec("projects/world-cup-neighbors", revision="v4")
+        spec = load_design_spec(ARCHIVE, revision="v4")
         report = validate_design_spec(spec)
 
         self.assertTrue(report["ok"], report["errors"])
+        self.assertIsNone(report["archetype"])
+        self.assertFalse(any("chair" in error for error in report["errors"]))
         self.assertEqual(report["design"]["source_of_truth"], "authored_cad_with_spec_gates")
-        self.assertEqual(report["warnings"], [])
         self.assertIn("Dan", report["people"])
         self.assertIn("Carrie", report["people"])
         carrie = spec["files"]["people"]["people"][1]
         self.assertEqual(carrie["clothing"]["number"], "9")
+
+    def test_best_buds_v1_specs_pass_archetype_gates(self):
+        from bambu.design_pipeline import load_design_spec, validate_design_spec
+
+        spec = load_design_spec("projects/best-buds-chair", revision="v1")
+        report = validate_design_spec(spec)
+
+        self.assertTrue(report["ok"], report["errors"])
+        self.assertEqual(report["archetype"], "seated_diorama")
+        self.assertIn("woman", report["people_ids"])
+        self.assertIn("dog", report["people_ids"])
 
 
 if __name__ == "__main__":

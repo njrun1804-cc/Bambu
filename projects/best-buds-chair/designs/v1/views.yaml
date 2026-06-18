@@ -1,0 +1,8 @@
+schema_version: 2
+views:
+  - {name: front, location: [0, -220, 38], target: [0, 0, 28], ortho_scale: 135}
+  - {name: three-quarter, location: [120, -170, 65], target: [0, 0, 28], ortho_scale: 145}
+  - {name: rear, location: [0, 210, 50], target: [0, 0, 28], ortho_scale: 140}
+  - {name: top-plate, location: [0, -8, 250], target: [0, -8, 10], ortho_scale: 145}
+  - {name: face_closeup_woman, location: [14, -130, 52], target: [14, 4, 48], ortho_scale: 34}
+  - {name: face_closeup_dog, location: [-6, -130, 48], target: [-6, 6, 44], ortho_scale: 30}

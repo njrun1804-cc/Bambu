@@ -1,0 +1,32 @@
+schema_version: 2
+slug: best-buds-chair
+intent: Woman with glasses and tri-color dog on patio chair diorama — Best Buds
+privacy: private
+lane: build123d
+archetype: seated_diorama
+status: cad
+current_revision: v1
+next_safe_action: run release-check and approve renders
+printer:
+  model: Bambu Lab A1 mini
+  build_volume_mm: [180, 180, 180]
+  nozzle_mm: 0.4
+material:
+  name: Bambu PLA Basic
+  type: PLA
+  color: green
+  owned: true
+plate:
+  name: Bambu Textured PEI Plate
+  side: textured
+constraints:
+  dimensions_mm: [118, 65, 68]
+  tolerance_notes: Envelope from seated_diorama archetype profile
+manual_gates:
+  - design_check
+  - release_check
+  - render_approval
+  - slicer_review
+  - print_start
+source_files:
+  - source/v1/model.py

@@ -1,0 +1,30 @@
+schema_version: 1
+slug: best-buds-chair
+intent: Woman with glasses and tri-color dog on patio chair diorama
+archetype: seated_diorama
+reference_photo: photos/reference/.gitkeep
+created_at: "2026-06-18T00:00:00+00:00"
+agent_fill:
+  subjects:
+    - id: woman
+      type: human
+    - id: dog
+      type: animal
+  pose: seated on patio chair, woman right, arm on dog
+  props:
+    - chunky patio chair
+    - BEST BUDS nameplate
+  recognition_cues:
+    - glasses ridge
+    - layered hair cap
+    - dog floppy ears
+    - tri-color face mask
+  forbidden_traps:
+    - hair strands as free geometry
+    - separate eyeglass frames
+    - thin dog legs
+  dimensions_mm:
+    width: 118
+    depth: 65
+    height: 68
+status: specs_complete

@@ -1,0 +1,7 @@
+schema_version: 2
+views:
+  - {name: front, location: [0, -220, 40], target: [0, 0, 30], ortho_scale: 140}
+  - {name: three-quarter, location: [130, -170, 70], target: [0, 0, 30], ortho_scale: 150}
+  - {name: rear, location: [0, 220, 55], target: [0, 0, 30], ortho_scale: 145}
+  - {name: top-plate, location: [0, -8, 260], target: [0, -8, 10], ortho_scale: 150}
+  - {name: face_closeup_subject_1, location: [14, -130, 52], target: [14, 4, 48], ortho_scale: 34}

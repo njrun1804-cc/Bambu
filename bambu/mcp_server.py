@@ -11,7 +11,7 @@ from typing import Any
 
 from bambu.cli import default_world_cup_scene
 from bambu.context import context_view, rules_view
-from bambu.design_pipeline import load_design_spec, validate_design_spec
+from bambu.design_pipeline import load_design_spec, render_spec_sheet, validate_design_spec
 from bambu.figurine import generate_scad
 from bambu.handoff import inspect_print_handoff
 from bambu.preflight import detect_tools, next_steps, serialize_report
@@ -76,10 +76,97 @@ def bambu_project_view(project: str) -> dict[str, Any]:
     return project_view(Path(project))
 
 
-def bambu_design_check(project: str, revision: str = "v3") -> dict[str, Any]:
+def bambu_design_check(project: str, revision: str = "v1") -> dict[str, Any]:
     """Validate structured design specs before CAD generation or printer work."""
 
     return validate_design_spec(load_design_spec(Path(project), revision=revision))
+
+
+def bambu_intake(
+    photo: str,
+    intent: str,
+    slug: str | None = None,
+    root: str = "projects",
+    archetype: str | None = None,
+) -> dict[str, Any]:
+    """Photo-first intake: scaffold project and return agent prompt."""
+
+    from bambu.intake import classify_archetype_from_intent, run_intake
+
+    selected = archetype or classify_archetype_from_intent(intent)
+    return run_intake(photo, intent=intent, slug=slug, root=Path(root), archetype=selected)
+
+
+def bambu_render_spec_sheet(project: str, revision: str = "v1") -> dict[str, Any]:
+    """Render markdown design sheet from YAML specs."""
+
+    sheet = render_spec_sheet(Path(project), revision=revision)
+    return {"project": project, "revision": revision, "markdown": sheet}
+
+
+def bambu_release_check(
+    project: str,
+    revision: str = "v1",
+    output_dir: str = "outputs",
+    no_render: bool = False,
+    source_file: str | None = None,
+    output_slug: str | None = None,
+) -> dict[str, Any]:
+    """Run every release gate: design-check, export, FreeCAD, mesh, overhangs, islands, renders."""
+
+    from bambu.review3d import load_review_views, review_project_3d
+
+    spec = load_design_spec(Path(project), revision=revision)
+    design_report = validate_design_spec(spec)
+    views = load_review_views(project, revision=revision)
+    review = review_project_3d(
+        Path(project),
+        outputs_root=Path(output_dir),
+        render=not no_render,
+        source_file=Path(source_file) if source_file else None,
+        output_slug=output_slug,
+        views=views,
+        revision=revision,
+    )
+    gates = {
+        "design_check": design_report["ok"],
+        "fits_a1_mini": review.get("fits_a1_mini"),
+        "freecad": review.get("freecad", {}).get("available") and not review.get("freecad", {}).get("warnings"),
+        "mesh_watertight": review.get("mesh", {}).get("watertight_manifold"),
+        "overhangs": review.get("overhangs", {}).get("ok"),
+        "islands": review.get("islands", {}).get("ok"),
+    }
+    if not no_render:
+        gates["renders"] = bool(review.get("blender", {}).get("paths"))
+    return {
+        "ok": all(gates.values()),
+        "gates": gates,
+        "design": design_report,
+        "review": review,
+    }
+
+
+def bambu_qc(
+    sliced: str,
+    stl: str | None = None,
+    context: str = "profiles/bambu-a1-mini/context.yaml",
+    overhang_budget_mm2: float = 150.0,
+) -> dict[str, Any]:
+    """Printability QC on sliced 3MF and optional STL overhang/island analysis."""
+
+    from bambu.mesh import analyze_islands
+    from bambu.printability import analyze_stl_overhangs, load_printer_context, qc_sliced_3mf
+
+    ctx = load_printer_context(Path(context))
+    stl_report = (
+        analyze_stl_overhangs(Path(stl), patch_budget_mm2=overhang_budget_mm2)
+        if stl
+        else {"available": False, "reason": "no stl provided", "ok": True}
+    )
+    island_report = analyze_islands(Path(stl)) if stl else {"available": False, "ok": True}
+    slice_report = qc_sliced_3mf(Path(sliced), context=ctx)
+    ok = slice_report.get("ok") and stl_report.get("ok", True) and island_report.get("ok", True)
+    return {"ok": ok, "stl": stl_report, "islands": island_report, "sliced": slice_report}
 
 
 def bambu_sync_artifacts(
@@ -242,6 +329,10 @@ def _build_mcp():
     server.tool()(bambu_create_project)
     server.tool()(bambu_project_view)
     server.tool()(bambu_design_check)
+    server.tool()(bambu_intake)
+    server.tool()(bambu_render_spec_sheet)
+    server.tool()(bambu_release_check)
+    server.tool()(bambu_qc)
     server.tool()(bambu_sync_artifacts)
     server.tool()(bambu_build123d_export)
     server.tool()(bambu_record_print_result)

@@ -110,7 +110,7 @@ class CliTests(unittest.TestCase):
                 )
 
             self.assertEqual(exit_code, 0)
-            self.assertTrue((Path(tmp) / "cable-clip" / "reviews" / "001-print-feedback-v001.md").exists())
+            self.assertTrue((Path(tmp) / "cable-clip" / "reviews" / "001-print-feedback-v1.md").exists())
             self.assertIn("Recorded print result", output.getvalue())
 
     def test_sync_artifacts_command_indexes_outputs(self):

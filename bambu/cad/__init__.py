@@ -1,4 +1,4 @@
-"""build123d export gate for project source models."""
+"""build123d CAD library and export gate for project source models."""
 
 from __future__ import annotations
 
@@ -18,13 +18,14 @@ def export_build123d_project(
     source_file: Path | None = None,
     model_symbol: str = "model",
     output_slug: str | None = None,
+    revision: str | None = None,
 ) -> dict[str, Any]:
     """Export a build123d project model to STEP and STL and record artifacts."""
 
     project_dir = Path(project_path)
     project = load_project(project_dir / "project.yaml")
     slug = output_slug or project["slug"]
-    source = source_file or project_dir / "source" / "model.py"
+    source = _resolve_source_file(project_dir, project, source_file, revision=revision)
     model = load_build123d_model(source, model_symbol=model_symbol)
     export_step, export_stl = _build123d_exporters()
 
@@ -46,6 +47,27 @@ def export_build123d_project(
         "artifacts": artifacts,
         "manual_boundary": "Open exported artifacts in CAD/slicer tools for review before printing.",
     }
+
+
+def _resolve_source_file(
+    project_dir: Path,
+    project: dict[str, Any],
+    source_file: Path | None,
+    *,
+    revision: str | None = None,
+) -> Path:
+    if source_file:
+        return source_file
+    rev = revision or project.get("current_revision", "v001")
+    rev_base = rev.split(".", 1)[0]
+    if rev_base.startswith("v") and not rev_base.startswith("v0"):
+        rev_path = project_dir / "source" / rev_base / "model.py"
+        if rev_path.exists():
+            return rev_path
+    legacy = project_dir / "source" / "model.py"
+    if legacy.exists():
+        return legacy
+    return project_dir / "source" / rev_base / "model.py"
 
 
 def load_build123d_model(source_file: Path | str, *, model_symbol: str = "model") -> Any:

@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "project_slug": "best-buds-chair",
+  "revision": "v1",
+  "updated_at": "2026-06-18T22:15:28+00:00",
+  "artifacts": [
+    {
+      "path": "outputs/best-buds-chair-v1.step",
+      "kind": "cad_step",
+      "sha256": "9df8673503de07c313e667559ae76e9ad4ae96a10f578fa7c7f2b65cb2743a61",
+      "bytes": 2667731,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair-v1.stl",
+      "kind": "mesh_stl",
+      "sha256": "f5b75cfb818426209c930adc7d8e0aa879f429c955c9aaa2391e383bd98f327f",
+      "bytes": 5418734,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair.step",
+      "kind": "cad_step",
+      "sha256": "07ad37627fb671ef30f54858389a72ccee17483bdf6004a6a8b14b8d61100287",
+      "bytes": 2667731,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair.stl",
+      "kind": "mesh_stl",
+      "sha256": "f5b75cfb818426209c930adc7d8e0aa879f429c955c9aaa2391e383bd98f327f",
+      "bytes": 5418734,
+      "generated": true
+    }
+  ]
+}

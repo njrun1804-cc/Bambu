@@ -30,5 +30,6 @@ classifiers = [
 bambu = "bambu.cli:main"
 bambu-mcp = "bambu.mcp_server:main"
 
-[tool.setuptools]
-packages = ["bambu"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bambu*"]

@@ -99,6 +99,7 @@ class Review3dTests(unittest.TestCase):
             root = Path(tmp)
             project = root / "projects" / "demo"
             project.mkdir(parents=True)
+            (project / "project.yaml").write_text("slug: demo\ncurrent_revision: v1\n")
             outputs = root / "outputs"
             outputs.mkdir()
 
@@ -120,6 +121,43 @@ class Review3dTests(unittest.TestCase):
         self.assertEqual(report["manual_boundary"], "No printer contact. Review CAD, previews, slicer settings, and supports manually.")
         self.assertFalse(report["printer_contact"])
         self.assertEqual(report["freecad"]["available"], False)
+
+    def test_review_project_3d_passes_revision_to_export(self):
+        from bambu.review3d import FreeCADInstall, review_project_3d
+
+        freecad = FreeCADInstall(
+            available=False,
+            app=None,
+            binary=None,
+            env={},
+            reason="not installed",
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project = root / "projects" / "demo"
+            project.mkdir(parents=True)
+            (project / "project.yaml").write_text("slug: demo\ncurrent_revision: v4.1\n")
+            outputs = root / "outputs"
+            outputs.mkdir()
+
+            with patch("bambu.review3d.export_build123d_project") as export, patch(
+                "bambu.review3d.sync_project_artifacts"
+            ) as sync, patch("bambu.review3d.detect_freecad", return_value=freecad), patch(
+                "bambu.review3d.detect_blender", return_value=None
+            ):
+                export.return_value = {
+                    "project_slug": "demo",
+                    "step": str(outputs / "demo.step"),
+                    "stl": str(outputs / "demo.stl"),
+                    "bounding_box_mm": [10.0, 20.0, 30.0],
+                    "fits_a1_mini": True,
+                }
+                sync.return_value = {"artifacts": []}
+                review_project_3d(project, outputs_root=outputs, render=False, revision="v4")
+
+        export.assert_called_once()
+        self.assertEqual(export.call_args.kwargs["revision"], "v4")
 
 
     def test_inspect_stl_mesh_accepts_watertight_tetrahedron(self):

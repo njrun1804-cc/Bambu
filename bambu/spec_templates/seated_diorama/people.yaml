@@ -1,0 +1,22 @@
+schema_version: 2
+people:
+  - id: subject_1
+    name: Subject One
+    role: primary
+    target_height_mm: 45
+    head_mm: {width: 20.0, height: 21.0}
+    torso_mm: {width: 17.0, height: 14.0}
+    likeness_cues: []
+    print_safe_face:
+      glasses: open_ridge_with_engraved_pupils
+      hair: solid_cap_mass
+    review:
+      face_center: [0, 0, 50]
+shared_rules:
+  face_style: rounded chibi heads, broad low-relief landmarks
+  no_photorealism: true
+  minimum_face_feature_width_mm: 1.2
+  forbid:
+    - separate eyeglass frames
+    - thin fingers
+    - hair strands as free geometry

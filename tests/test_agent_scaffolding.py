@@ -24,7 +24,7 @@ class AgentScaffoldingTests(unittest.TestCase):
         skill = (REPO / ".agents" / "skills" / "bambu-operate" / "SKILL.md").read_text()
 
         self.assertIn("bambu_doctor", skill)
-        self.assertIn("bambu_generate_world_cup_figurines", skill)
+        self.assertIn("bambu_intake", skill)
         self.assertIn("Do not start print jobs", skill)
 
 

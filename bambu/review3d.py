@@ -10,9 +10,13 @@ import shutil
 import subprocess
 from typing import Any
 
+import yaml
+
 from bambu.cad import export_build123d_project
+from bambu.cad.specs import character_metrics, load_specs
+from bambu.design_pipeline import load_design_spec
 from bambu.mesh import analyze_islands, analyze_overhangs, inspect_mesh
-from bambu.projects import sync_project_artifacts
+from bambu.projects import load_project, sync_project_artifacts
 
 
 FREECAD_JSON_BEGIN = "FREECAD_REVIEW_JSON_BEGIN"
@@ -128,13 +132,73 @@ DEFAULT_PREVIEW_VIEWS: list[dict[str, Any]] = [
 ]
 
 
+def load_review_views(
+    project_path: Path | str,
+    *,
+    revision: str | None = None,
+    views_file: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Load Blender views from YAML, augmenting with per-subject face closeups."""
+
+    if views_file and views_file.exists():
+        data = yaml.safe_load(views_file.read_text()) or {}
+        views = list(data.get("views", []))
+    else:
+        project = Path(project_path)
+        rev = revision or load_project(project / "project.yaml").get("current_revision", "v1")
+        views_path = project / "designs" / rev / "views.yaml"
+        if views_path.exists():
+            data = yaml.safe_load(views_path.read_text()) or {}
+            views = list(data.get("views", []))
+        else:
+            views = list(DEFAULT_PREVIEW_VIEWS)
+
+    if revision:
+        specs = load_specs(project_path, revision=revision)
+        for metric in character_metrics(specs):
+            person_id = metric.get("id")
+            center = metric.get("face_center")
+            if not person_id or not center:
+                continue
+            name = f"face_closeup_{person_id}"
+            if any(v.get("name") == name for v in views):
+                continue
+            cx, cy, cz = center
+            views.append(
+                {
+                    "name": name,
+                    "location": [cx, cy - 126, cz + 4],
+                    "target": [cx, cy, cz],
+                    "ortho_scale": 34,
+                }
+            )
+    return views
+
+
 def build_blender_preview_command(
-    *, blender: str, stl: Path, output_dir: Path, views: list[dict[str, Any]] | None = None
+    *,
+    blender: str,
+    stl: Path,
+    output_dir: Path,
+    views: list[dict[str, Any]] | None = None,
+    paint_guide: bool = False,
+    thumbnail_px: int | None = None,
 ) -> list[str]:
     """Build a read-only Blender preview command for an STL."""
 
     views = views or DEFAULT_PREVIEW_VIEWS
     views_literal = json.dumps(views)
+    mat_color = (0.03, 0.90, 0.25, 1.0) if not paint_guide else (0.55, 0.55, 0.58, 1.0)
+    suffix = "" if not paint_guide else "-paint-guide"
+    thumb_block = ""
+    if thumbnail_px:
+        thumb_block = f"""
+    if view['name'] == 'front':
+        bpy.context.scene.render.resolution_x = {thumbnail_px}
+        bpy.context.scene.render.resolution_y = {int(thumbnail_px * 0.75)}
+        bpy.context.scene.render.filepath = {str(output_dir)!r} + '/thumbnail-{thumbnail_px}px.png'
+        bpy.ops.render.render(write_still=True)
+"""
     script = f"""
 import bpy
 from mathutils import Vector
@@ -148,14 +212,12 @@ min_v = Vector((min(v.x for v in coords), min(v.y for v in coords), min(v.z for 
 max_v = Vector((max(v.x for v in coords), max(v.y for v in coords), max(v.z for v in coords)))
 center = (min_v + max_v) / 2
 obj.location -= Vector((center.x, center.y, min_v.z))
-mat = bpy.data.materials.new('Green PLA preview')
-mat.diffuse_color = (0.03, 0.90, 0.25, 1.0)
+mat = bpy.data.materials.new('PLA preview{suffix}')
+mat.diffuse_color = {mat_color}
 obj.data.materials.append(mat)
 bpy.context.scene.render.engine = 'BLENDER_WORKBENCH'
 bpy.context.scene.display.shading.light = 'STUDIO'
 bpy.context.scene.display.shading.color_type = 'MATERIAL'
-# Cavity + shadow shading makes low-relief detail (engraved pupils, smile
-# lines, hair grooves) legible in renders, which flat shading hides.
 bpy.context.scene.display.shading.show_cavity = True
 bpy.context.scene.display.shading.cavity_type = 'BOTH'
 bpy.context.scene.display.shading.cavity_ridge_factor = 1.5
@@ -176,8 +238,9 @@ for view in {views_literal}:
     cam.location = view['location']
     cam.data.ortho_scale = view['ortho_scale']
     look_at(view['target'])
-    bpy.context.scene.render.filepath = {str(output_dir)!r} + '/' + view['name'] + '.png'
+    bpy.context.scene.render.filepath = {str(output_dir)!r} + '/' + view['name'] + '{suffix}.png'
     bpy.ops.render.render(write_still=True)
+{thumb_block}
 """
     return [blender, "--background", "--python-expr", script]
 
@@ -188,6 +251,8 @@ def render_blender_previews(
     *,
     blender: str | None = None,
     views: list[dict[str, Any]] | None = None,
+    paint_guide: bool = False,
+    thumbnail_px: int | None = None,
 ) -> dict[str, Any]:
     """Render preview PNGs through Blender if available."""
 
@@ -195,7 +260,14 @@ def render_blender_previews(
     if not executable:
         return {"available": False, "reason": "Blender not found", "paths": []}
     output_dir.mkdir(parents=True, exist_ok=True)
-    command = build_blender_preview_command(blender=executable, stl=stl, output_dir=output_dir, views=views)
+    command = build_blender_preview_command(
+        blender=executable,
+        stl=stl,
+        output_dir=output_dir,
+        views=views,
+        paint_guide=paint_guide,
+        thumbnail_px=thumbnail_px,
+    )
     completed = subprocess.run(command, check=False, text=True, capture_output=True)
     paths = sorted(str(path) for path in output_dir.glob("*.png"))
     return {
@@ -215,12 +287,22 @@ def review_project_3d(
     source_file: Path | None = None,
     output_slug: str | None = None,
     views: list[dict[str, Any]] | None = None,
+    revision: str | None = None,
 ) -> dict[str, Any]:
     """Export, inspect, render, and summarize a project without printer contact."""
 
     project = Path(project_path)
+    manifest = load_project(project / "project.yaml")
+    rev = revision or manifest.get("current_revision", "v1")
+    if views is None:
+        views = load_review_views(project, revision=rev)
+
     export = export_build123d_project(
-        project, output_dir=outputs_root, source_file=source_file, output_slug=output_slug
+        project,
+        output_dir=outputs_root,
+        source_file=source_file,
+        output_slug=output_slug,
+        revision=rev,
     )
     artifacts = sync_project_artifacts(project, outputs_root=outputs_root)
     step = Path(export["step"])
@@ -230,11 +312,21 @@ def review_project_3d(
     mesh_report = inspect_mesh(stl)
     overhang_report = analyze_overhangs(stl)
     island_report = analyze_islands(stl)
-    blender_report = (
-        render_blender_previews(stl, review_dir, views=views) if render else {"available": False, "paths": []}
-    )
+
+    thumbnail_px = _thumbnail_size_from_spec(project, rev)
+    blender_report: dict[str, Any] = {"available": False, "paths": []}
+    paint_guide_report: dict[str, Any] = {"available": False, "paths": []}
+    if render:
+        blender_report = render_blender_previews(
+            stl, review_dir, views=views, thumbnail_px=thumbnail_px
+        )
+        paint_guide_report = render_blender_previews(
+            stl, review_dir / "paint-guide", views=views, paint_guide=True
+        )
+
     return {
         "project": export["project_slug"],
+        "revision": rev,
         "step": str(step),
         "stl": str(stl),
         "bounding_box_mm": export["bounding_box_mm"],
@@ -244,10 +336,20 @@ def review_project_3d(
         "overhangs": overhang_report,
         "islands": island_report,
         "blender": blender_report,
+        "paint_guide": paint_guide_report,
+        "thumbnail_px": thumbnail_px,
         "artifact_count": len(artifacts.get("artifacts", [])),
         "printer_contact": False,
         "manual_boundary": "No printer contact. Review CAD, previews, slicer settings, and supports manually.",
     }
+
+
+def _thumbnail_size_from_spec(project: Path, revision: str) -> int | None:
+    spec = load_design_spec(project, revision=revision)
+    check = spec.get("files", {}).get("visual_acceptance", {}).get("thumbnail_check", {})
+    if check.get("enabled"):
+        return int(check.get("size_px", 150))
+    return None
 
 
 def _freecad_install(binary: Path, *, app: Path | None, runtime_root: Path) -> FreeCADInstall:

@@ -24,10 +24,10 @@ class ProjectTests(unittest.TestCase):
             project_dir = root / "shelf-bracket"
             manifest = project_dir / "project.yaml"
             self.assertTrue(manifest.exists())
-            self.assertTrue((project_dir / "source").is_dir())
-            self.assertTrue((project_dir / "reviews").is_dir())
+            self.assertTrue((project_dir / "designs" / "v1").is_dir())
+            self.assertTrue((project_dir / "references").is_dir())
             self.assertIn("slug: shelf-bracket", manifest.read_text())
-            self.assertEqual(project["source_files"], ["source/model.py"])
+            self.assertEqual(project["source_files"], ["source/v1/model.py"])
 
             loaded = load_project(manifest)
             self.assertEqual(loaded["slug"], "shelf-bracket")
@@ -74,8 +74,8 @@ class ProjectTests(unittest.TestCase):
                 notes="Corner lifted on textured plate.",
                 next_revision="Add brim and increase slot width by 0.4 mm.",
             )
-            measurement = root / "pegboard-hook" / "measurements" / "v001.yaml"
-            review = root / "pegboard-hook" / "reviews" / "001-print-feedback-v001.md"
+            measurement = root / "pegboard-hook" / "measurements" / "v1.yaml"
+            review = root / "pegboard-hook" / "reviews" / "001-print-feedback-v1.md"
 
             self.assertTrue(measurement.exists())
             self.assertTrue(review.exists())

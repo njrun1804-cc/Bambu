@@ -1,0 +1,34 @@
+schema_version: 1
+id: seated_diorama
+label: Seated portrait diorama with structural frame
+description: >
+  Seated subjects on a chunky chair/couch frame. Fusion-safe masses only;
+  recognition at thumbnail size via fused chunky cues.
+default_dimensions_mm:
+  width: {min: 110, max: 125, default: 118}
+  depth: {min: 60, max: 70, default: 65}
+  height: {max: 70, default: 68}
+min_feature_width_mm: 1.2
+required_scene_elements:
+  - id: chair
+    label: structural chair or couch frame
+    required: true
+  - id: base
+    label: rounded base plate
+    required: true
+forbidden_traps:
+  - hair strands as free geometry
+  - separate eyeglass frames
+  - thin dog legs
+  - wicker weave or lattice thinner than 2 mm
+  - floating lap props
+  - multi-solid compounds
+fusion_rules:
+  min_overlap_mm: 0.3
+  single_fused_solid: true
+  engraves_via_boolean_subtraction: true
+recognition_cues:
+  - glasses as raised ridge with engraved pupils
+  - hair as solid cap mass with shallow grooves
+  - animal ears fused into head mass
+  - chair cushion back readable at thumbnail scale
