@@ -1,0 +1,22 @@
+intent: >-
+  Embossed logo badge for Castaway Covers brand. Palm tree and beach chair
+    scene with Castaway Covers text. Single-color white PLA+. For sewing onto
+      boat cover corners. No painting required.
+
+      agentic_pipeline:
+        source_of_truth: authored_cad_with_spec_gates
+          cad_backend: build123d
+            source_file: source/model.py
+              export_gate: bambu export-build123d
+                review_gate: tools/review_3d.py
+                  printer_contact_allowed: false
+
+                  design_notes:
+                    - Single-color embossed relief — all features raised 0.5 mm above base
+                      - No painting, no multi-material — relies on light/shadow contrast
+                        - Sewing holes in all four corners for corner attachment to boat covers
+                          - Rounded corners to prevent snags on fabric during sewing
+                            - Palm tree and beach chair hand-coded as build123d primitives from logo PNG
+                              - Text split into two lines: 'Castaway' upper, 'Covers' lower
+                                - Scene positioned left-of-center, text right-of-center
+                                
