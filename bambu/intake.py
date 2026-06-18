@@ -115,7 +115,7 @@ def run_intake(
             f"Run: uv run bambu meshy concept {project_dir} (requires MESHY_API_KEY)",
             f"Author source/v1/model.py using bambu.cad.archetypes.{archetype}",
             f"Run: uv run bambu export-body {project_dir} --revision v1",
-            "Shapr3D fuse per docs/learning/shapr3d-fusion-workflow.md",
+            f"Run: uv run bambu fuse-mesh {project_dir} --revision v1",
             f"Run: uv run bambu release-check {project_dir} --revision v1 --stl outputs/<slug>-v1-fused.stl --skip-export --skip-freecad",
         ],
     }

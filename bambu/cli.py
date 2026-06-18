@@ -123,13 +123,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     export_body = subparsers.add_parser(
         "export-body",
-        help="Export build123d body scaffold (head stubs) to STEP and STL for Shapr3D fusion.",
+        help="Export build123d body scaffold (head stubs) to STEP and STL for mesh fusion.",
     )
     export_body.add_argument("project", type=Path, help="Project directory containing project.yaml.")
     export_body.add_argument("--output-dir", type=Path, default=Path("outputs"))
     export_body.add_argument("--source-file", type=Path, default=None, help="Alternate build123d source file.")
     export_body.add_argument("--output-slug", default=None, help="Alternate output artifact name.")
     export_body.add_argument("--revision", default=None, help="Design revision for output slug.")
+
+    fuse_mesh = subparsers.add_parser(
+        "fuse-mesh",
+        help="Fuse build123d body STL with Meshy head STLs into a printable fused STL.",
+    )
+    fuse_mesh.add_argument("project", type=Path, help="Project directory containing project.yaml.")
+    fuse_mesh.add_argument("--revision", default=None, help="Design revision under designs/<revision>.")
+    fuse_mesh.add_argument("--body-stl", type=Path, default=None, help="Override body STL path.")
+    fuse_mesh.add_argument("--output", type=Path, default=None, help="Override fused STL output path.")
+    fuse_mesh.add_argument("--outputs-root", type=Path, default=Path("outputs"), help="Directory for body/fused artifacts.")
+    fuse_mesh.add_argument("--no-repair", action="store_true", help="Skip pymeshlab repair pass.")
+    fuse_mesh.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
 
     design_check = subparsers.add_parser(
         "design-check",
@@ -273,6 +285,8 @@ def main(argv: list[str] | None = None) -> int:
         return _export_build123d(args)
     if args.command == "export-body":
         return _export_body(args)
+    if args.command == "fuse-mesh":
+        return _fuse_mesh(args)
     if args.command == "design-check":
         return _design_check(args)
     if args.command == "qc":
@@ -580,8 +594,57 @@ def _export_body(args: argparse.Namespace) -> int:
     print(f"STL: {result['stl']}")
     print(f"bounding box mm: {result['bounding_box_mm']}")
     print(f"fits A1 mini: {'yes' if result['fits_a1_mini'] else 'no'}")
-    print("Head stubs only — fuse Meshy heads in Shapr3D before release-check --stl.")
+    print("Head stubs only — run fuse-mesh after Meshy heads are in mesh/.")
     return 0
+
+
+def _fuse_mesh(args: argparse.Namespace) -> int:
+    from bambu.mesh_fusion import fuse_hybrid_project
+    from bambu.projects import load_project
+
+    project = load_project(args.project / "project.yaml")
+    rev = args.revision or project.get("current_revision", "v1")
+    result = fuse_hybrid_project(
+        args.project,
+        revision=rev,
+        body_stl=args.body_stl,
+        output_path=args.output,
+        outputs_root=args.outputs_root,
+        repair=not args.no_repair,
+    )
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps(result, indent=2) + "\n")
+    mesh = result.get("mesh", {})
+    overhangs = result.get("overhangs", {})
+    islands = result.get("islands", {})
+    print("Hybrid mesh fusion")
+    print("------------------")
+    print(f"body STL: {result['body_stl']}")
+    print(f"fused STL: {result['fused_stl']}")
+    for head in result.get("heads", []):
+        print(
+            f"  {head['id']}: stub={head['stub_center']} width={head['target_width_mm']}mm "
+            f"scale={head['scale']} sink={head['sink_mm']}mm"
+        )
+    print(
+        "mesh watertight: %s (open=%s non-manifold=%s)"
+        % (mesh.get("watertight_manifold"), mesh.get("open_edges"), mesh.get("non_manifold_edges"))
+    )
+    print(
+        "overhangs: %s (largest steep %s mm2)"
+        % ("ok" if overhangs.get("ok") else "FAIL", overhangs.get("largest_steep_patch_mm2"))
+    )
+    print(
+        "islands: %s (blocking=%s)"
+        % ("ok" if islands.get("ok") else "FAIL", islands.get("blocking_count"))
+    )
+    ok = result.get("gates_ok")
+    if ok is None:
+        ok = bool(mesh.get("watertight_manifold"))
+    print(f"fuse-mesh: {'pass' if ok else 'WARNINGS'}")
+    print(result.get("manual_boundary", ""))
+    return 0 if ok else 1
 
 
 def _review_mesh(args: argparse.Namespace) -> int:

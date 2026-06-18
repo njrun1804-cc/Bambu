@@ -39,7 +39,7 @@ def rules_view() -> dict[str, Any]:
             "figurine_first_pass": "openscad",
             "likeness": "hybrid",
             "mesh_generation": "meshy",
-            "mesh_fusion": "shapr3d",
+            "mesh_fusion": "bambu",
             "mesh_review": "blender",
             "mesh_later": "blender",
         },

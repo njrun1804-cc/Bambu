@@ -23,7 +23,7 @@ from build123d import (
 
 
 def head_fusion_stub(*, cx: float, cy: float, cz: float, radius: float = 6.0, height: float = 8.0):
-    """Neck/head cap stub at face_center for Shapr3D Meshy head fusion."""
+    """Neck/head cap stub for Meshy head fusion."""
 
     return Pos(cx, cy, cz - height / 2.0) * Cylinder(radius, height)
 

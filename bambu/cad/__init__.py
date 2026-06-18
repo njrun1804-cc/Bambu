@@ -62,7 +62,7 @@ def export_build123d_body(
     output_slug: str | None = None,
     revision: str | None = None,
 ) -> dict[str, Any]:
-    """Export body scaffold (head stubs) STEP/STL for Shapr3D fusion."""
+    """Export body scaffold (head stubs) STEP/STL for automated mesh fusion."""
 
     return export_build123d_project(
         project_path,

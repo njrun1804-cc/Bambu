@@ -102,6 +102,23 @@ def make_seated_woman(
     return subtract_engraves(body, engraves) if engraves else body
 
 
+def head_stub_centers(params: dict[str, Any] | None = None) -> dict[str, tuple[float, float, float]]:
+    """Return neck-stub centers for hybrid-lane Meshy head fusion."""
+
+    p = {**DEFAULT_PARAMS, **(params or {})}
+    base_z = float(p["base"]["z"])
+    woman = p["woman"]
+    dog = p["dog"]
+    seat_z = base_z + 18.0
+    torso_top = seat_z + float(woman["torso_h"])
+    woman_cz = torso_top + float(woman["head_h"]) / 2.0 - 2.0
+    dog_cz = base_z + 16.0
+    return {
+        "woman": (float(woman["cx"]), float(woman["cy"]), float(woman_cz)),
+        "dog": (float(dog["cx"]), float(dog["cy"]), float(dog_cz)),
+    }
+
+
 def build_seated_diorama(params: dict[str, Any] | None = None, *, include_heads: bool = True):
     """Compose base + chair + seated woman + lap dog into one fused solid."""
 

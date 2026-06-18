@@ -1,0 +1,389 @@
+"""Automated hybrid-lane mesh fusion: build123d body + Meshy head STLs."""
+
+from __future__ import annotations
+
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterator
+
+import numpy as np
+import trimesh
+import yaml
+
+from bambu.cad.archetypes.seated_diorama import head_stub_centers
+from bambu.cad.specs import character_metrics, load_specs
+from bambu.mesh import analyze_islands, analyze_overhangs, inspect_mesh
+from bambu.mesh_lane import (
+    DEFAULT_SINK_MM,
+    FUSION_MANIFEST_NAME,
+    fusion_manifest_path,
+    load_fusion_manifest,
+)
+from bambu.projects import load_project, sync_project_artifacts
+
+
+DEFAULT_HEAD_ROTATIONS: dict[str, tuple[float, float, float]] = {
+    # Meshy image-to-3d exports are Y-up; tuned on best-buds-chair v1.
+    "woman": (-90.0, 0.0, 0.0),
+    "dog": (0.0, 180.0, 0.0),
+}
+
+
+def seated_diorama_stub_centers() -> dict[str, tuple[float, float, float]]:
+    """Alias for manifest scaffolding."""
+
+    return head_stub_centers()
+
+
+@dataclass(frozen=True)
+class HeadFusionSpec:
+    head_id: str
+    source: Path
+    stub_center: tuple[float, float, float]
+    target_width_mm: float
+    scale: float = 1.0
+    sink_mm: float = DEFAULT_SINK_MM
+    rotation_deg: tuple[float, float, float] = (-90.0, 0.0, 0.0)
+
+
+def fuse_hybrid_project(
+    project_path: Path | str,
+    *,
+    revision: str | None = None,
+    outputs_root: Path = Path("outputs"),
+    body_stl: Path | None = None,
+    output_path: Path | None = None,
+    repair: bool = True,
+) -> dict[str, Any]:
+    """Fuse body scaffold STL with Meshy head meshes per fusion_manifest.yaml."""
+
+    project = Path(project_path)
+    manifest = load_project(project / "project.yaml")
+    rev = revision or manifest.get("current_revision", "v1")
+    fusion = load_fusion_manifest(project, revision=rev)
+    if not fusion:
+        raise ValueError(f"Missing {FUSION_MANIFEST_NAME} under designs/{rev}/")
+
+    repo_root = _repo_root(project)
+    body_path = _resolve_body_stl(project, repo_root, fusion, body_stl, outputs_root=outputs_root)
+    body_mesh = trimesh.load(body_path, force="mesh")
+    if not isinstance(body_mesh, trimesh.Trimesh):
+        raise ValueError(f"Body artifact must be a single mesh: {body_path}")
+
+    specs = _load_head_specs(project, fusion, repo_root, revision=rev)
+    fused_mesh = fuse_head_specs(body_mesh, specs)
+    mesh_report = repair_fused_mesh(fused_mesh) if repair else _mesh_report(fused_mesh)
+
+    fused_rel = fusion.get("fused_artifact", f"outputs/{manifest['slug']}-{rev.split('.')[0]}-fused.stl")
+    fused_path = output_path or _resolve_project_path(project, repo_root, fused_rel, outputs_root=outputs_root)
+    fused_path.parent.mkdir(parents=True, exist_ok=True)
+    fused_mesh.export(fused_path)
+
+    on_disk = inspect_mesh(fused_path)
+    overhang_report = analyze_overhangs(fused_path)
+    island_report = analyze_islands(fused_path)
+    gates_ok = (
+        on_disk.get("watertight_manifold")
+        and overhang_report.get("ok")
+        and island_report.get("ok")
+    )
+
+    fusion["fusion_tool"] = "bambu"
+    fusion["fusion_status"] = "complete" if mesh_report.get("watertight_manifold") else "complete_with_warnings"
+    fusion["fusion_completed_at"] = _now()
+    fusion["fusion_strategy"] = "merge"
+    fusion_manifest_path(project, revision=rev).write_text(yaml.safe_dump(fusion, sort_keys=False))
+    _update_provenance_fusion(project, fused_rel=str(fused_rel), gates_ok=gates_ok)
+
+    head_reports = [
+        {
+            "id": spec.head_id,
+            "source": str(spec.source),
+            "stub_center": list(spec.stub_center),
+            "anchor": list(spec.stub_center),
+            "target_width_mm": spec.target_width_mm,
+            "scale": spec.scale,
+            "sink_mm": spec.sink_mm,
+            "rotation_deg": list(spec.rotation_deg),
+        }
+        for spec in specs
+    ]
+    artifacts = sync_project_artifacts(project, outputs_root=outputs_root)
+    return {
+        "project": manifest["slug"],
+        "revision": rev,
+        "body_stl": str(body_path),
+        "fused_stl": str(fused_path),
+        "heads": head_reports,
+        "mesh": on_disk,
+        "overhangs": overhang_report,
+        "islands": island_report,
+        "gates_ok": gates_ok,
+        "repair": mesh_report,
+        "artifacts": artifacts,
+        "manual_boundary": (
+            "Automated mesh merge fuses Meshy heads onto the build123d body scaffold. "
+            "Non-manifold Meshy topology may fail watertight or island gates; "
+            "Shapr3D remains an optional manual override."
+        ),
+    }
+
+
+def fuse_project_meshes(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Backward-compatible alias."""
+
+    return fuse_hybrid_project(*args, **kwargs)
+
+
+def fuse_head_specs(body: trimesh.Trimesh, specs: list[HeadFusionSpec]) -> trimesh.Trimesh:
+    """Align each head spec and merge onto the body mesh."""
+
+    heads: list[trimesh.Trimesh] = []
+    for spec in specs:
+        raw = trimesh.load(spec.source, force="mesh")
+        if not isinstance(raw, trimesh.Trimesh):
+            raise ValueError(f"Head mesh must be a single Trimesh: {spec.source}")
+        cleaned = clean_head_mesh(raw)
+        heads.append(
+            align_head_to_stub(
+                cleaned,
+                spec.stub_center,
+                target_width_mm=spec.target_width_mm,
+                scale=spec.scale,
+                sink_mm=spec.sink_mm,
+                rotation_deg=spec.rotation_deg,
+            )
+        )
+    return merge_meshes(body, heads)
+
+
+def clean_head_mesh(mesh: trimesh.Trimesh, *, min_faces: int = 50) -> trimesh.Trimesh:
+    """Drop tiny floating components from Meshy exports."""
+
+    parts = mesh.split(only_watertight=False)
+    if len(parts) <= 1:
+        cleaned = mesh.copy()
+    else:
+        keep = [part for part in parts if len(part.faces) >= min_faces]
+        if not keep:
+            keep = [max(parts, key=lambda part: len(part.faces))]
+        cleaned = trimesh.util.concatenate(keep) if len(keep) > 1 else keep[0]
+    cleaned.merge_vertices()
+    cleaned.update_faces(cleaned.unique_faces())
+    cleaned.remove_unreferenced_vertices()
+    return cleaned
+
+
+def align_head_to_stub(
+    mesh: trimesh.Trimesh,
+    stub_center: tuple[float, float, float],
+    *,
+    target_width_mm: float,
+    scale: float = 1.0,
+    sink_mm: float = DEFAULT_SINK_MM,
+    rotation_deg: tuple[float, float, float] = (0.0, 0.0, 0.0),
+) -> trimesh.Trimesh:
+    """Scale, rotate, and seat a Meshy head on a build123d neck stub."""
+
+    aligned = mesh.copy()
+    aligned.merge_vertices()
+    horizontal = max(float(aligned.extents[0]), float(aligned.extents[1]), 1e-6)
+    aligned.apply_scale((target_width_mm * scale) / horizontal)
+    for angle, axis in zip(rotation_deg, ([1, 0, 0], [0, 1, 0], [0, 0, 1])):
+        if angle:
+            aligned.apply_transform(trimesh.transformations.rotation_matrix(np.radians(angle), axis))
+    aligned.apply_translation(np.asarray(stub_center, dtype=float) - aligned.centroid)
+    if sink_mm:
+        aligned.apply_translation([0.0, 0.0, -float(sink_mm)])
+    aligned.merge_vertices()
+    return aligned
+
+
+def merge_meshes(body: trimesh.Trimesh, heads: list[trimesh.Trimesh]) -> trimesh.Trimesh:
+    """Pragmatic merge: concatenate body + aligned heads and deduplicate vertices."""
+
+    combined = trimesh.util.concatenate([body, *heads])
+    combined.merge_vertices()
+    combined.update_faces(combined.unique_faces())
+    combined.remove_unreferenced_vertices()
+    return combined
+
+
+def repair_fused_mesh(mesh: trimesh.Trimesh) -> dict[str, Any]:
+    """Best-effort repair pass; returns mesh gate metrics."""
+
+    repaired = mesh.copy()
+    repaired.merge_vertices()
+    repaired.update_faces(repaired.unique_faces())
+    repaired.remove_unreferenced_vertices()
+    try:
+        import pymeshlab  # optional
+
+        with _temporary_stl(repaired, label="input") as stl_path, _temporary_stl(repaired, label="repaired") as out_path:
+            ms = pymeshlab.MeshSet()
+            ms.load_new_mesh(str(stl_path))
+            ms.apply_filter("meshing_remove_duplicate_vertices")
+            ms.apply_filter("meshing_remove_duplicate_faces")
+            ms.apply_filter("meshing_merge_close_vertices", threshold=pymeshlab.PercentageValue(0.25))
+            ms.apply_filter("meshing_repair_non_manifold_edges", method=0)
+            ms.apply_filter("meshing_close_holes", maxholesize=500)
+            ms.save_current_mesh(str(out_path))
+            repaired = trimesh.load(out_path, force="mesh")
+    except Exception:
+        repaired.fill_holes()
+    return _mesh_report(repaired)
+
+
+def _load_head_specs(
+    project: Path,
+    fusion: dict[str, Any],
+    repo_root: Path,
+    *,
+    revision: str,
+) -> list[HeadFusionSpec]:
+    project_manifest = load_project(project / "project.yaml")
+    stub_defaults: dict[str, tuple[float, float, float]] = {}
+    if project_manifest.get("archetype") == "seated_diorama":
+        stub_defaults = seated_diorama_stub_centers()
+
+    metrics = {m["id"]: m for m in character_metrics(load_specs(project, revision=revision)) if m.get("id")}
+    specs: list[HeadFusionSpec] = []
+    for entry in fusion.get("head_meshes", []):
+        head_id = str(entry.get("id", "subject"))
+        align = entry.get("align") or {}
+        stub_values = align.get("stub") or stub_defaults.get(head_id)
+        if not stub_values:
+            stub_values = [align.get("x", 0.0), align.get("y", 0.0), align.get("z", 0.0)]
+        stub_center = (float(stub_values[0]), float(stub_values[1]), float(stub_values[2]))
+        anchor = (
+            float(align.get("x", stub_center[0])),
+            float(align.get("y", stub_center[1])),
+            float(align.get("z", stub_center[2])),
+        )
+        source = _resolve_project_path(project, repo_root, entry.get("source", ""))
+        if not source.exists():
+            raise FileNotFoundError(f"Head mesh missing for {head_id}: {source}")
+
+        scale = float(align.get("scale", 1.0))
+        base_width = float(metrics.get(head_id, {}).get("head_width_mm") or 20.0)
+        if "target_width_mm" in align:
+            target_width = float(align["target_width_mm"])
+        else:
+            target_width = base_width * scale
+        specs.append(
+            HeadFusionSpec(
+                head_id=head_id,
+                source=source,
+                stub_center=anchor,
+                target_width_mm=target_width,
+                scale=1.0,
+                sink_mm=float(align.get("sink_mm", DEFAULT_SINK_MM)),
+                rotation_deg=_rotation_for_head(head_id, align),
+            )
+        )
+    return specs
+
+
+def _rotation_for_head(head_id: str, align: dict[str, Any]) -> tuple[float, float, float]:
+    if "rotation" in align:
+        values = align["rotation"]
+        if isinstance(values, (list, tuple)) and len(values) == 3:
+            return float(values[0]), float(values[1]), float(values[2])
+    return DEFAULT_HEAD_ROTATIONS.get(head_id, (-90.0, 0.0, 0.0))
+
+
+def _resolve_body_stl(
+    project: Path,
+    repo_root: Path,
+    fusion: dict[str, Any],
+    body_stl: Path | None,
+    *,
+    outputs_root: Path,
+) -> Path:
+    if body_stl is not None:
+        path = Path(body_stl)
+        if not path.exists():
+            raise FileNotFoundError(path)
+        return path
+
+    body_rel = fusion.get("body_artifact", "")
+    stl_rel = body_rel.replace(".step", ".stl") if body_rel.endswith(".step") else body_rel
+    path = _resolve_project_path(project, repo_root, stl_rel, outputs_root=outputs_root)
+    if path.exists():
+        return path
+    step_path = _resolve_project_path(project, repo_root, body_rel, outputs_root=outputs_root)
+    if step_path.exists():
+        raise FileNotFoundError(
+            f"Body STL missing ({path}). Run: uv run bambu export-body {project} --revision v1"
+        )
+    raise FileNotFoundError(path)
+
+
+def _resolve_project_path(
+    project: Path,
+    repo_root: Path,
+    rel: str | Path,
+    *,
+    outputs_root: Path | None = None,
+) -> Path:
+    rel_path = Path(rel)
+    if rel_path.is_absolute():
+        return rel_path
+    if rel_path.parts and rel_path.parts[0] == "outputs":
+        root = outputs_root or repo_root / "outputs"
+        return root / Path(*rel_path.parts[1:])
+    candidate = project / rel_path
+    if candidate.exists():
+        return candidate
+    return repo_root / rel_path
+
+
+def _repo_root(project: Path) -> Path:
+    resolved = project.resolve()
+    if (resolved / "pyproject.toml").exists():
+        return resolved
+    if (resolved.parent / "pyproject.toml").exists():
+        return resolved.parent
+    return resolved
+
+
+def _mesh_report(mesh: trimesh.Trimesh) -> dict[str, Any]:
+    with _temporary_stl(mesh) as path:
+        return inspect_mesh(path)
+
+
+@contextmanager
+def _temporary_stl(mesh: trimesh.Trimesh, *, label: str = "mesh") -> Iterator[Path]:
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=f"-{label}.stl", delete=False) as handle:
+        path = Path(handle.name)
+    try:
+        mesh.export(path)
+        yield path
+    finally:
+        path.unlink(missing_ok=True)
+
+
+def _update_provenance_fusion(project: Path, *, fused_rel: str, gates_ok: bool) -> None:
+    provenance_path = project / "mesh" / "provenance.yaml"
+    if not provenance_path.exists():
+        return
+    provenance = yaml.safe_load(provenance_path.read_text()) or {}
+    provenance.setdefault("fusion_readiness", {})
+    provenance["fusion_readiness"].update(
+        {
+            "fused_stl": fused_rel,
+            "fused_exists": True,
+            "automated_fusion": True,
+            "gates_ok": gates_ok,
+            "ready_for_shapr3d": False,
+        }
+    )
+    provenance_path.write_text(yaml.safe_dump(provenance, sort_keys=False))
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()

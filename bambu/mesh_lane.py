@@ -18,6 +18,7 @@ from bambu.projects import load_project, write_artifact_manifest
 FUSION_MANIFEST_NAME = "fusion_manifest.yaml"
 MESH_DIR_NAME = "mesh"
 PROVENANCE_NAME = "provenance.yaml"
+DEFAULT_SINK_MM = 5.0
 
 
 def fusion_manifest_path(project_dir: Path | str, *, revision: str = "v1") -> Path:
@@ -44,6 +45,12 @@ def write_fusion_manifest_stub(
     project = Path(project_dir)
     manifest = load_project(project / "project.yaml")
     project_slug = slug or manifest.get("slug", project.name)
+    archetype = manifest.get("archetype", "")
+    stub_lookup: dict[str, tuple[float, float, float]] = {}
+    if archetype == "seated_diorama":
+        from bambu.mesh_fusion import seated_diorama_stub_centers
+
+        stub_lookup = seated_diorama_stub_centers()
     specs = load_specs(project, revision=revision)
     head_meshes: list[dict[str, Any]] = []
     for metric in character_metrics(specs):
@@ -62,16 +69,21 @@ def write_fusion_manifest_stub(
         scale = 1.0
         if head_mm.get("width"):
             scale = float(head_mm["width"]) / 20.0
+        stub = stub_lookup.get(person_id)
+        align: dict[str, Any] = {
+            "x": center[0] if len(center) > 0 else 0.0,
+            "y": center[1] if len(center) > 1 else 0.0,
+            "z": center[2] if len(center) > 2 else 0.0,
+            "scale": scale,
+            "sink_mm": DEFAULT_SINK_MM,
+        }
+        if stub:
+            align["stub"] = [stub[0], stub[1], stub[2]]
         head_meshes.append(
             {
                 "id": person_id,
                 "source": f"mesh/{person_id}-head.stl",
-                "align": {
-                    "x": center[0] if len(center) > 0 else 0.0,
-                    "y": center[1] if len(center) > 1 else 0.0,
-                    "z": center[2] if len(center) > 2 else 0.0,
-                    "scale": scale,
-                },
+                "align": align,
             }
         )
     if not head_meshes:
@@ -84,7 +96,7 @@ def write_fusion_manifest_stub(
         "body_artifact": f"outputs/{project_slug}-{revision}-body.step",
         "head_meshes": head_meshes,
         "fused_artifact": f"outputs/{project_slug}-{revision}-fused.stl",
-        "fusion_tool": "shapr3d",
+        "fusion_tool": "bambu",
         "fusion_status": "pending",
     }
     path = fusion_manifest_path(project, revision=revision)

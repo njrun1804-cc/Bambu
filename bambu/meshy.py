@@ -369,7 +369,7 @@ def scaffold_mesh_without_api(project_dir: Path | str) -> dict[str, Any]:
                 "4. `uv run bambu meshy head projects/<slug> --subject woman`",
                 "5. `uv run bambu meshy head projects/<slug> --subject dog`",
                 "6. `uv run bambu meshy analyze projects/<slug> --subject woman`",
-                "7. Shapr3D fuse per docs/learning/shapr3d-fusion-workflow.md",
+                "7. uv run bambu fuse-mesh projects/<slug> (or Shapr3D override per docs/learning/shapr3d-fusion-workflow.md)",
                 "",
             ]
         )

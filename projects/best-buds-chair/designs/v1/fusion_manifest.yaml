@@ -8,6 +8,15 @@ head_meshes:
     y: 4
     z: 48
     scale: 1.0
+    stub:
+    - 20
+    - 2
+    - 50.5
+    sink_mm: 12
+    rotation:
+    - -90
+    - 0
+    - 0
 - id: dog
   source: mesh/dog-head.stl
   align:
@@ -15,6 +24,17 @@ head_meshes:
     y: 6
     z: 44
     scale: 1.05
+    stub:
+    - 0
+    - -4
+    - 26
+    sink_mm: 12
+    rotation:
+    - 0
+    - 180
+    - 0
 fused_artifact: outputs/best-buds-chair-v1-fused.stl
-fusion_tool: shapr3d
-fusion_status: pending
+fusion_tool: bambu
+fusion_status: complete_with_warnings
+fusion_strategy: merge
+fusion_completed_at: '2026-06-18T23:24:04+00:00'

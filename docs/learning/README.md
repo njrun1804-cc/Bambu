@@ -12,8 +12,8 @@ names the loop's current position in `next_safe_action`; start there.
 2. agent vision fills specs     -> designs/<rev>/*.yaml (gates, not CAD source)
 3. bambu design-check           -> specs complete; hybrid requires concept_sheet path
 4. bambu meshy concept + heads  -> concept PNG + mesh/*-head.stl (MESHY_API_KEY)
-5. bambu export-body            -> body STEP with head stubs for Shapr3D
-6. Shapr3D fuse                 -> outputs/<slug>-<rev>-fused.stl (manual)
+5. bambu export-body            -> body STEP/STL with head stubs
+6. bambu fuse-mesh              -> outputs/<slug>-<rev>-fused.stl (automated)
 7. bambu release-check --stl    -> mesh + overhangs + islands + Blender renders
 8. human approves renders       -> 150px thumbnail + face closeups vs concept sheet
 9. Bambu Studio GUI slice       -> authoritative time/cost (read print-path-qc.md)
@@ -47,8 +47,8 @@ why `analyze_islands` exists.
   classification, slicer trust hierarchy, proven A1 mini setup.
 - `build123d-figurine-workflow.md` - the v2 learning pass that established
   the figurine lane.
-- `hybrid-lane.md` - Meshy + Shapr3D likeness pipeline (default for photo gifts).
-- `shapr3d-fusion-workflow.md` - manual Shapr3D fusion runbook after export-body.
+- `hybrid-lane.md` - Meshy + automated mesh fusion pipeline (default for photo gifts).
+- `shapr3d-fusion-workflow.md` - optional Shapr3D manual override runbook.
 - `projects/<slug>/reviews/NNN-*.md` - per-revision evidence, numbered and
   append-only. Build notes before the print, feedback after it.
 
