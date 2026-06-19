@@ -30,7 +30,7 @@ def export_build123d_project(
     if body_only and output_slug is None:
         slug = f"{project['slug']}-{rev.split('.')[0]}-body"
     symbol = "body_model" if body_only else model_symbol
-    source = _resolve_source_file(project_dir, project, source_file, revision=revision)
+    source = _resolve_source_file(project_dir, project, source_file, revision=rev)
     model = load_build123d_model(source, model_symbol=symbol)
     export_step, export_stl = _build123d_exporters()
 
@@ -83,7 +83,7 @@ def _resolve_source_file(
 ) -> Path:
     if source_file:
         return source_file
-    rev = revision or project.get("current_revision", "v001")
+    rev = revision or project.get("current_revision", "v1")
     rev_base = rev.split(".", 1)[0]
     if rev_base.startswith("v") and not rev_base.startswith("v0"):
         rev_path = project_dir / "source" / rev_base / "model.py"

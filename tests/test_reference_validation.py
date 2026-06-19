@@ -1,3 +1,4 @@
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -72,15 +73,18 @@ class ReferenceValidationTests(unittest.TestCase):
             result = validate_reference_photo(project, photo=photo)
             self.assertTrue(result.ok)
 
-    def test_confirmed_flag_does_not_mask_marina_source(self):
+    def test_confirmed_flag_does_not_mask_known_wrong_content(self):
+        """A photo whose content is a known-wrong source is blocked even when confirmed.
+
+        The block keys on embedded content hashes (no dependency on the gitignored private/
+        originals), so we patch the digest set with the test photo's hash to exercise it.
+        """
+
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp) / "demo"
             refs = project / "references"
             refs.mkdir(parents=True)
             marina_bytes = b"the-exact-marina-couple-bytes"
-            private_refs = project / "private" / "references"
-            private_refs.mkdir(parents=True)
-            (private_refs / "clear-right-pair.jpg").write_bytes(marina_bytes)
             photo = project / "photos" / "reference" / "patio-reference.jpg"
             photo.parent.mkdir(parents=True)
             photo.write_bytes(marina_bytes)
@@ -93,12 +97,34 @@ class ReferenceValidationTests(unittest.TestCase):
                     }
                 )
             )
-            result = validate_reference_photo(project, photo=photo)
-            self.assertFalse(result.ok)
-            self.assertTrue(any("byte-identical" in err for err in result.errors))
+            wrong_hash = hashlib.sha256(marina_bytes).hexdigest()
+            with patch(
+                "bambu.reference_validation.KNOWN_WRONG_REFERENCE_SHA256",
+                frozenset({wrong_hash}),
+            ):
+                result = validate_reference_photo(project, photo=photo)
+                self.assertFalse(result.ok)
+                self.assertTrue(any("known-wrong" in err for err in result.errors))
 
-            forced = validate_reference_photo(project, photo=photo, force=True)
-            self.assertTrue(forced.ok)
+                forced = validate_reference_photo(project, photo=photo, force=True)
+                self.assertTrue(forced.ok)
+
+    def test_select_reference_photo_skips_crops_concepts_and_known_wrong(self):
+        from bambu.reference_validation import select_reference_photo
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ref_dir = Path(tmp) / "photos" / "reference"
+            ref_dir.mkdir(parents=True)
+            for name in (
+                "crop-dog.jpg",  # alphabetically first — the old glob[0] bug returned this
+                "crop-woman.jpg",
+                "concept-meshy.png",
+                "patio-reference-wrong-marina.jpg",
+                "patio-reference.jpg",
+            ):
+                (ref_dir / name).write_bytes(b"x")
+            chosen = select_reference_photo(ref_dir)
+            self.assertEqual(chosen, ref_dir / "patio-reference.jpg")
 
     @patch.object(MeshyClient, "run_figure_prototype")
     @patch.object(MeshyClient, "download_url")

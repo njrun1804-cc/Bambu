@@ -1,3 +1,4 @@
+import hashlib
 import os
 import tempfile
 import unittest
@@ -8,6 +9,7 @@ from bambu.meshy import (
     TEST_MODE_API_KEY,
     MeshyClient,
     MeshyError,
+    _reject_unsafe_url,
     concept_prompt_from_intake,
     meshy_analyze,
     meshy_concept,
@@ -28,6 +30,28 @@ class MeshyTests(unittest.TestCase):
     def test_test_mode_key_is_recognized(self):
         client = MeshyClient(api_key=TEST_MODE_API_KEY)
         self.assertTrue(client.test_mode)
+
+    def test_request_refuses_test_mode_key_without_network(self):
+        # The documented placeholder key must never reach the network: _request
+        # short-circuits before any httpx call.
+        client = MeshyClient(api_key=TEST_MODE_API_KEY)
+        with patch("httpx.Client") as http_client:
+            with self.assertRaises(MeshyError):
+                client.balance()
+            http_client.assert_not_called()
+
+    def test_reject_unsafe_url_blocks_non_https_and_internal_hosts(self):
+        _reject_unsafe_url("https://assets.meshy.ai/model.stl")  # public https: allowed
+        for bad in (
+            "http://assets.meshy.ai/model.stl",  # not https
+            "https://localhost/model.stl",
+            "https://127.0.0.1/model.stl",
+            "https://169.254.169.254/latest/meta-data",  # link-local metadata
+            "https://10.0.0.5/model.stl",  # private
+            "ftp://assets.meshy.ai/model.stl",
+        ):
+            with self.assertRaises(MeshyError, msg=bad):
+                _reject_unsafe_url(bad)
 
     @patch.object(MeshyClient, "_request")
     def test_balance_calls_v1_endpoint(self, request: MagicMock):
@@ -170,6 +194,31 @@ class MeshyTests(unittest.TestCase):
             i23d.assert_called_once()
             self.assertEqual(i23d.call_args.args[0], concept)
             self.assertIn("scene-full.stl", result["stl_path"])
+
+    @patch("bambu.meshy._export_meshy_model")
+    @patch.object(MeshyClient, "run_image_to_3d")
+    def test_meshy_scene_blocks_known_wrong_image(self, i23d, export):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "demo"
+            ref = project / "photos" / "reference"
+            ref.mkdir(parents=True)
+            (project / "project.yaml").write_text("slug: demo\ncurrent_revision: v1\n")
+            wrong = ref / "patio-reference.jpg"
+            wrong_bytes = b"the-exact-marina-couple-bytes"
+            wrong.write_bytes(wrong_bytes)
+            wrong_hash = hashlib.sha256(wrong_bytes).hexdigest()
+
+            with patch(
+                "bambu.reference_validation.KNOWN_WRONG_REFERENCE_SHA256",
+                frozenset({wrong_hash}),
+            ):
+                with self.assertRaises(MeshyError):
+                    meshy_scene(
+                        project,
+                        image=wrong,
+                        client=MeshyClient(api_key=TEST_MODE_API_KEY),
+                    )
+            i23d.assert_not_called()
 
 
 if __name__ == "__main__":

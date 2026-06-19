@@ -40,13 +40,6 @@ DEFAULT_MIN_COMPONENT_FACES = 20
 DEFAULT_MIN_COMPONENT_EXTENT_MM = 0.8
 DEFAULT_SEAT_TRIM_MARGIN_MM = 4.0
 DEFAULT_BRIDGE_SINK_OVERLAP_MM = 1.0
-DEFAULT_BRIDGE_TOP_LIFT_MM = 3.0
-DEFAULT_BRIDGE_RADIUS_FACTOR = 0.28
-DEFAULT_BRIDGE_MIN_RADIUS_MM = 3.0
-DEFAULT_BRIDGE_SECTIONS = 16
-DEFAULT_SEAM_WELD_MM = 1.25
-DEFAULT_SEAM_WELD_RADIUS_MM = 10.0
-DEFAULT_SEAM_WELD_Z_BAND_MM = 8.0
 DEFAULT_HEAD_REPAIR_MERGE_PCT = 0.5
 DEFAULT_FUSED_REPAIR_MERGE_PCT = 0.25
 DEFAULT_STUB_EXTRA_SINK_MM: dict[str, float] = {
@@ -55,6 +48,10 @@ DEFAULT_STUB_EXTRA_SINK_MM: dict[str, float] = {
 }
 DEFAULT_ISLAND_BUMP_PRUNE_RADIUS_MM = 1.5
 DEFAULT_ISLAND_BUMP_PRUNE_MAX_ITER = 12
+# Refuse to prune more than this fraction of faces in one pass: trimming a blocking bump
+# should remove a few faces, not gouge the head. A larger removal means the island seed
+# landed on real geometry, so we stop and let the island gate report it for human review.
+DEFAULT_ISLAND_BUMP_PRUNE_MAX_FRACTION = 0.05
 
 
 def seated_diorama_stub_centers() -> dict[str, tuple[float, float, float]]:
@@ -71,7 +68,6 @@ class HeadFusionSpec:
     target_width_mm: float
     target_height_mm: float | None = None
     cap_fraction: float | None = None
-    bridge_center: tuple[float, float, float] | None = None
     scale: float = 1.0
     sink_mm: float = DEFAULT_SINK_MM
     extra_sink_mm: float = 0.0
@@ -104,14 +100,8 @@ def fuse_hybrid_project(
 
     specs = _load_head_specs(project, fusion, repo_root, revision=rev)
     fused_mesh = fuse_head_specs(body_mesh, specs)
-    stub_centers = [
-        center
-        for spec in specs
-        for center in (spec.bridge_center, spec.stub_center)
-        if center is not None
-    ]
     if repair:
-        fused_mesh, mesh_report = repair_fused_mesh(fused_mesh, stub_centers=stub_centers)
+        fused_mesh, mesh_report = repair_fused_mesh(fused_mesh)
     else:
         mesh_report = _mesh_report(fused_mesh)
 
@@ -130,7 +120,10 @@ def fuse_hybrid_project(
     )
 
     fusion["fusion_tool"] = "bambu"
-    fusion["fusion_status"] = "complete" if mesh_report.get("watertight_manifold") else "complete_with_warnings"
+    # Status reflects the gates computed from the exported file (watertight + overhang +
+    # island), not the weaker in-memory repair metric, so the durable manifest can't read
+    # "complete" while a disk gate failed.
+    fusion["fusion_status"] = "complete" if gates_ok else "complete_with_warnings"
     fusion["fusion_completed_at"] = _now()
     fusion["fusion_strategy"] = "merge"
     fusion_manifest_path(project, revision=rev).write_text(yaml.safe_dump(fusion, sort_keys=False))
@@ -289,18 +282,6 @@ def trim_mesh_below_z(mesh: trimesh.Trimesh, z_min: float) -> trimesh.Trimesh:
     return trimmed
 
 
-def neck_bridge(spec: HeadFusionSpec, z_bottom: float) -> trimesh.Trimesh:
-    """Cylinder spanning the neck stub so head and body share standing material."""
-
-    center = spec.bridge_center or spec.stub_center
-    radius = max(spec.target_width_mm * DEFAULT_BRIDGE_RADIUS_FACTOR, DEFAULT_BRIDGE_MIN_RADIUS_MM)
-    z_top = max(spec.stub_center[2], center[2]) + DEFAULT_BRIDGE_TOP_LIFT_MM
-    height = max(z_top - z_bottom, 2.0)
-    bridge = trimesh.creation.cylinder(radius=radius, height=height, sections=DEFAULT_BRIDGE_SECTIONS)
-    bridge.apply_translation([center[0], center[1], z_bottom + height / 2.0])
-    return bridge
-
-
 def _seat_trim_z(spec: HeadFusionSpec) -> float:
     return max(1.0, spec.stub_center[2] - spec.sink_mm - DEFAULT_SEAT_TRIM_MARGIN_MM)
 
@@ -362,20 +343,27 @@ def repair_head_mesh(mesh: trimesh.Trimesh, *, merge_pct: float = DEFAULT_HEAD_R
 
 def repair_fused_mesh(
     mesh: trimesh.Trimesh,
-    *,
-    stub_centers: list[tuple[float, float, float]] | None = None,
 ) -> tuple[trimesh.Trimesh, dict[str, Any]]:
     """Best-effort repair pass; returns the repaired mesh and gate metrics."""
 
-    _ = stub_centers
     repaired = cull_small_components(mesh.copy())
+    repair_path = "pymeshlab"
+    repair_error: str | None = None
     try:
         repaired = _pymeshlab_stub_repair(repaired)
         repaired = prune_blocking_island_bumps(repaired)
         repaired = cull_small_components(repaired)
-    except Exception:
+    except Exception as exc:
+        # Record that the strong repair path failed and we fell back to trimesh's much
+        # weaker fill_holes, so a reader of the report knows which repair actually ran.
+        repair_path = "fill_holes_fallback"
+        repair_error = str(exc)
         repaired.fill_holes()
-    return repaired, _mesh_report(repaired)
+    report = _mesh_report(repaired)
+    report["repair_path"] = repair_path
+    if repair_error:
+        report["repair_error"] = repair_error
+    return repaired, report
 
 
 def prune_blocking_island_bumps(
@@ -383,6 +371,7 @@ def prune_blocking_island_bumps(
     *,
     radius_mm: float = DEFAULT_ISLAND_BUMP_PRUNE_RADIUS_MM,
     max_iterations: int = DEFAULT_ISLAND_BUMP_PRUNE_MAX_ITER,
+    max_prune_fraction: float = DEFAULT_ISLAND_BUMP_PRUNE_MAX_FRACTION,
 ) -> trimesh.Trimesh:
     """Drop tiny downward-facing bumps flagged as blocking print islands."""
 
@@ -405,71 +394,16 @@ def prune_blocking_island_bumps(
                 centroid = vertices[triangle].mean(axis=0)
                 if float(np.linalg.norm(centroid - seed_vec)) <= radius_mm:
                     keep[face_idx] = False
+        to_remove = int(np.count_nonzero(~keep))
+        if to_remove and to_remove > max_prune_fraction * len(faces):
+            # Over-broad removal would deform the head rather than trim a bump; stop and
+            # leave the island for the gate to report instead of carving a hole.
+            return repaired
         repaired.update_faces(keep)
         repaired.remove_unreferenced_vertices()
         repaired = _pymeshlab_stub_repair(repaired)
         repaired = cull_small_components(repaired)
     return repaired
-
-
-def regional_seam_weld(
-    mesh: trimesh.Trimesh,
-    stub_centers: list[tuple[float, float, float]],
-    *,
-    radius_mm: float = DEFAULT_SEAM_WELD_RADIUS_MM,
-    z_band_mm: float = DEFAULT_SEAM_WELD_Z_BAND_MM,
-    weld_mm: float = DEFAULT_SEAM_WELD_MM,
-) -> trimesh.Trimesh:
-    """Weld vertices near neck stubs so head and body share mesh connectivity."""
-
-    from scipy.spatial import cKDTree
-
-    verts = np.asarray(mesh.vertices, dtype=float)
-    faces = np.asarray(mesh.faces)
-    count = len(verts)
-    in_region = np.zeros(count, dtype=bool)
-    radius_sq = float(radius_mm) ** 2
-    for stub in stub_centers:
-        sx, sy, sz = stub
-        for index, (x, y, z) in enumerate(verts):
-            if abs(z - sz) <= z_band_mm and (x - sx) ** 2 + (y - sy) ** 2 <= radius_sq:
-                in_region[index] = True
-
-    parent = np.arange(count)
-
-    def find(index: int) -> int:
-        while parent[index] != index:
-            parent[index] = parent[parent[index]]
-            index = parent[index]
-        return index
-
-    def union(left: int, right: int) -> None:
-        root_left, root_right = find(left), find(right)
-        if root_left != root_right:
-            parent[root_right] = root_left
-
-    for left, right in cKDTree(verts).query_pairs(r=float(weld_mm)):
-        # Weld only within the stub neighborhood; OR-welding chains collapse the whole body.
-        if in_region[left] and in_region[right]:
-            union(left, right)
-
-    groups: dict[int, list[int]] = {}
-    for index in range(count):
-        groups.setdefault(find(index), []).append(index)
-
-    new_index: dict[int, int] = {}
-    new_vertices: list[np.ndarray] = []
-    for members in groups.values():
-        merged = index = len(new_vertices)
-        new_vertices.append(verts[members].mean(axis=0))
-        for member in members:
-            new_index[member] = merged
-
-    remapped = np.vectorize(new_index.__getitem__)(faces)
-    valid = np.apply_along_axis(lambda tri: len({tri[0], tri[1], tri[2]}) == 3, 1, remapped)
-    welded = trimesh.Trimesh(vertices=np.asarray(new_vertices), faces=remapped[valid], process=False)
-    welded.remove_unreferenced_vertices()
-    return welded
 
 
 def _pymeshlab_stub_repair(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
@@ -568,7 +502,6 @@ def _load_head_specs(
                 head_id=head_id,
                 source=source,
                 stub_center=placement,
-                bridge_center=None,
                 target_width_mm=target_width,
                 target_height_mm=target_height,
                 cap_fraction=cap_fraction,

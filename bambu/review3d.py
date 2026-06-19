@@ -414,12 +414,13 @@ def review_project_3d(
         stl = outputs_root / f"{slug}.stl"
         if not stl.exists():
             raise FileNotFoundError(f"--skip-export requires existing STL at {stl}")
+        bounding_box = _stl_bounding_box_mm(stl)
         export = {
             "project_slug": slug,
             "step": str(step) if step.exists() else None,
             "stl": str(stl),
-            "bounding_box_mm": inspect_mesh(stl).get("bounding_box_mm", [0, 0, 0]),
-            "fits_a1_mini": True,
+            "bounding_box_mm": bounding_box,
+            "fits_a1_mini": _fits_volume(bounding_box, manifest["printer"]["build_volume_mm"]),
         }
     else:
         export = export_build123d_project(

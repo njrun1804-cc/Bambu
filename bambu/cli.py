@@ -221,6 +221,11 @@ def build_parser() -> argparse.ArgumentParser:
     meshy_head.add_argument("project", type=Path, help="Project directory.")
     meshy_head.add_argument("--subject", required=True, choices=["woman", "dog"], help="Head subject id.")
     meshy_head.add_argument("--crop", type=Path, default=None, help="Override crop image path.")
+    meshy_head.add_argument(
+        "--force-reference",
+        action="store_true",
+        help="Skip reference/intake validation after manual photo review.",
+    )
 
     meshy_figure_build = meshy_sub.add_parser(
         "figure-build",
@@ -231,6 +236,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--prototype-task-id",
         default=None,
         help="Figure prototype task id (default: mesh/provenance.yaml concept.task_id).",
+    )
+    meshy_figure_build.add_argument(
+        "--force-reference",
+        action="store_true",
+        help="Skip reference/intake validation after manual photo review.",
     )
 
     meshy_scene = meshy_sub.add_parser(
@@ -243,6 +253,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Override source image (default: photos/reference/concept-meshy.png).",
+    )
+    meshy_scene.add_argument(
+        "--force-reference",
+        action="store_true",
+        help="Skip reference/intake validation after manual photo review.",
     )
 
     meshy_analyze = meshy_sub.add_parser("analyze", help="Free Meshy analyze-printability report.")
@@ -807,15 +822,28 @@ def _meshy(args: argparse.Namespace) -> int:
             print(f"Concept sheet: {result['concept_path']} ({result['endpoint']})")
             return 0
         if args.meshy_command == "head":
-            result = meshy_head(args.project, subject=args.subject, crop=args.crop)
+            result = meshy_head(
+                args.project,
+                subject=args.subject,
+                crop=args.crop,
+                force_reference=getattr(args, "force_reference", False),
+            )
             print(f"Head STL: {result['stl_path']}")
             return 0
         if args.meshy_command == "figure-build":
-            result = meshy_figure_build(args.project, prototype_task_id=args.prototype_task_id)
+            result = meshy_figure_build(
+                args.project,
+                prototype_task_id=args.prototype_task_id,
+                force_reference=getattr(args, "force_reference", False),
+            )
             print(f"Figure STL: {result['stl_path']}")
             return 0
         if args.meshy_command == "scene":
-            result = meshy_scene(args.project, image=args.image)
+            result = meshy_scene(
+                args.project,
+                image=args.image,
+                force_reference=getattr(args, "force_reference", False),
+            )
             print(f"Scene STL: {result['stl_path']} (from {result['source_image']})")
             return 0
         if args.meshy_command == "analyze":

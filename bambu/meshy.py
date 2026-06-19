@@ -3,23 +3,30 @@
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
 import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import yaml
 
 from bambu.mesh_lane import mesh_intake, write_mesh_provenance
-from bambu.reference_validation import ensure_reference_photo_valid
+from bambu.reference_validation import ensure_reference_photo_valid, select_reference_photo
 
 
 MESHY_BASE_URL = "https://api.meshy.ai/openapi"
 TEST_MODE_API_KEY = "msy_dummy_api_key_for_test_mode_12345678"
 DEFAULT_POLL_INTERVAL_S = 3.0
 DEFAULT_POLL_TIMEOUT_S = 600.0
+
+# Cap any single downloaded Meshy artifact. A generous bound (a fused scene STL is
+# typically a few MB) that still prevents a malicious or buggy response from buffering
+# unbounded bytes to disk.
+MAX_DOWNLOAD_BYTES = 256 * 1024 * 1024
 
 FDM_HEAD_PAYLOAD_BASE = {
     "ai_model": "meshy-6",
@@ -49,6 +56,30 @@ SCENE_IMAGE_TO_3D_EXTRA = {
 
 class MeshyError(Exception):
     """Meshy API or configuration error."""
+
+
+def _reject_unsafe_url(url: str) -> None:
+    """Refuse download URLs that aren't https or point at a non-public address.
+
+    Download URLs come from the Meshy API response, so a spoofed/compromised response
+    must not be able to make us fetch from localhost or an internal/link-local host.
+    Real Meshy asset URLs are https on public CDNs, so this has no false positives.
+    """
+
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise MeshyError(f"Refusing non-https download URL: {url!r}")
+    host = (parsed.hostname or "").lower()
+    if not host or host == "localhost":
+        raise MeshyError(f"Refusing download URL with no/local host: {url!r}")
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+    if ip is not None and (
+        ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast
+    ):
+        raise MeshyError(f"Refusing download from non-public address: {host}")
 
 
 @dataclass(frozen=True)
@@ -82,6 +113,11 @@ class MeshyClient:
         json_body: dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        if self.test_mode:
+            raise MeshyError(
+                "MESHY_API_KEY is the test-mode placeholder; no live Meshy call was made. "
+                "Set a real key for live runs, or mock MeshyClient in tests."
+            )
         try:
             import httpx
         except ImportError as exc:
@@ -217,11 +253,28 @@ class MeshyClient:
         except ImportError as exc:
             raise MeshyError("httpx is required to download Meshy artifacts") from exc
 
+        _reject_unsafe_url(url)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        with httpx.Client(timeout=120.0, follow_redirects=True) as client:
-            response = client.get(url)
-            response.raise_for_status()
-            dest.write_bytes(response.content)
+        try:
+            with httpx.Client(timeout=120.0, follow_redirects=True) as client:
+                with client.stream("GET", url) as response:
+                    response.raise_for_status()
+                    # Re-check the post-redirect URL so a redirect can't land on an
+                    # internal host whose body we'd then persist.
+                    _reject_unsafe_url(str(response.url))
+                    total = 0
+                    with dest.open("wb") as handle:
+                        for chunk in response.iter_bytes():
+                            total += len(chunk)
+                            if total > MAX_DOWNLOAD_BYTES:
+                                raise MeshyError(
+                                    f"Meshy artifact exceeded {MAX_DOWNLOAD_BYTES}-byte cap; "
+                                    f"aborted download of {url}"
+                                )
+                            handle.write(chunk)
+        except Exception:
+            dest.unlink(missing_ok=True)
+            raise
         return dest
 
     def extract_model_urls(self, task: dict[str, Any]) -> dict[str, str]:
@@ -277,13 +330,7 @@ def resolve_reference_photo(project_dir: Path | str) -> Path | None:
             candidate = project / rel
             if candidate.exists():
                 return candidate
-    ref_dir = project / "photos" / "reference"
-    if ref_dir.is_dir():
-        for pattern in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
-            matches = sorted(ref_dir.glob(pattern))
-            if matches:
-                return matches[0]
-    return None
+    return select_reference_photo(project / "photos" / "reference")
 
 
 def resolve_head_crop(project_dir: Path | str, subject: str) -> Path:
@@ -403,6 +450,7 @@ def meshy_figure_build(
     *,
     prototype_task_id: str | None = None,
     client: MeshyClient | None = None,
+    force_reference: bool = False,
 ) -> dict[str, Any]:
     """Build a full chibi figure STL from a Figure prototype task (Creative Lab)."""
 
@@ -415,6 +463,18 @@ def meshy_figure_build(
             "figure-build requires --prototype-task-id or an existing concept.task_id in mesh/provenance.yaml. "
             "Run: bambu meshy concept <project>"
         )
+
+    # figure-build has no photo input of its own (it builds from a prototype produced by
+    # the validated meshy concept), but if the project carries a reference photo, refuse a
+    # known-wrong source before spending 30 credits. A missing reference is not an error.
+    ref_photo = resolve_reference_photo(project)
+    if ref_photo is not None:
+        try:
+            ensure_reference_photo_valid(
+                project, photo=ref_photo, force=force_reference, context="meshy figure-build"
+            )
+        except ValueError as exc:
+            raise MeshyError(str(exc)) from exc
 
     task = mesh_client.run_figure_build(str(proto_id))
     mesh_dir = project / "mesh"
@@ -447,6 +507,7 @@ def meshy_scene(
     *,
     image: Path | str | None = None,
     client: MeshyClient | None = None,
+    force_reference: bool = False,
 ) -> dict[str, Any]:
     """Image-to-3d on a full concept sheet or reference photo — unified scene mesh."""
 
@@ -460,6 +521,15 @@ def meshy_scene(
         raise FileNotFoundError(
             "Scene source not found. Pass --image or run bambu meshy concept to create concept-meshy.png."
         )
+
+    # Scene image-to-3d spends 20 credits directly off this image; block a known-wrong
+    # reference (the marina-photo mistake) before spending, same as meshy concept.
+    try:
+        ensure_reference_photo_valid(
+            project, photo=source, force=force_reference, context="meshy scene"
+        )
+    except ValueError as exc:
+        raise MeshyError(str(exc)) from exc
 
     mesh_client = client or MeshyClient.from_env()
     task = mesh_client.run_image_to_3d(
@@ -501,11 +571,20 @@ def meshy_head(
     subject: str,
     crop: Path | str | None = None,
     client: MeshyClient | None = None,
+    force_reference: bool = False,
 ) -> dict[str, Any]:
     """Run image-to-3d on a cropped head photo and save STL."""
 
     project = Path(project_dir)
     image = Path(crop) if crop else resolve_head_crop(project, subject)
+    # Head image-to-3d spends 20 credits off this crop; refuse a known-wrong source
+    # (e.g. the full marina photo passed as a crop) before spending.
+    try:
+        ensure_reference_photo_valid(
+            project, photo=image, force=force_reference, context=f"meshy head ({subject})"
+        )
+    except ValueError as exc:
+        raise MeshyError(str(exc)) from exc
     mesh_client = client or MeshyClient.from_env()
     task = mesh_client.run_image_to_3d(image)
     urls = mesh_client.extract_model_urls(task)

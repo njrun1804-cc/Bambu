@@ -10,12 +10,63 @@ from typing import Any
 import yaml
 
 
+# Content hashes of the known-wrong reference photos from the original incident (marina
+# neighbors / World Cup figurines). Embedding the digests means the byte-block works in CI
+# and fresh clones where the private/ originals are absent (private/ is gitignored). Covers
+# the canonical files and the re-encoded copy that actually slipped through once.
+KNOWN_WRONG_REFERENCE_SHA256 = frozenset(
+    {
+        "3b38ec95c09ff3ec426b1b633b667034a69bf3646b1f526fce87efd3f341b3ef",  # clear-right-pair.jpg
+        "7eaec9d196cf25162799c7bf174358b7e2e26be0159020056f9831d828d50e5f",  # group-right-pair.jpg
+        "ece326557eaf044874036438faba80014315755816b158e1bfd72d83e1e0cea7",  # re-encoded marina couple
+    }
+)
+
 KNOWN_WRONG_REFERENCE_MARKERS = (
     "clear-right-pair",
     "group-right-pair",
     "world-cup-neighbors",
     "world_cup_neighbors",
+    "marina",
+    "wrong",
 )
+
+_NON_REFERENCE_PREFIXES = ("crop-", "concept-")
+
+
+def _is_candidate_reference(path: Path) -> bool:
+    """True if a photos/reference file is plausibly THE reference photo.
+
+    Excludes head crops, generated concept sheets, and any known-wrong backup so the
+    fallback never silently hands a crop or marina backup to the Meshy spend path.
+    """
+
+    name = path.name.lower()
+    if any(name.startswith(prefix) for prefix in _NON_REFERENCE_PREFIXES):
+        return False
+    if any(marker in name for marker in KNOWN_WRONG_REFERENCE_MARKERS):
+        return False
+    return True
+
+
+def select_reference_photo(ref_dir: Path) -> Path | None:
+    """Pick the primary reference photo, skipping crops/concepts/known-wrong backups.
+
+    Prefer a file whose name contains 'reference'; otherwise the first remaining candidate.
+    """
+
+    if not ref_dir.is_dir():
+        return None
+    candidates = [
+        path
+        for pattern in ("*.jpg", "*.jpeg", "*.png", "*.webp")
+        for path in sorted(ref_dir.glob(pattern))
+        if _is_candidate_reference(path)
+    ]
+    if not candidates:
+        return None
+    preferred = [p for p in candidates if "reference" in p.name.lower()]
+    return (preferred or candidates)[0]
 
 
 @dataclass(frozen=True)
@@ -100,13 +151,7 @@ def validate_reference_photo(
             if candidate.exists():
                 photo = candidate
     if photo is None:
-        ref_dir = project / "photos" / "reference"
-        if ref_dir.is_dir():
-            for pattern in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
-                matches = sorted(ref_dir.glob(pattern))
-                if matches:
-                    photo = matches[0]
-                    break
+        photo = select_reference_photo(project / "photos" / "reference")
 
     errors: list[str] = []
     warnings: list[str] = []
@@ -118,21 +163,20 @@ def validate_reference_photo(
     confirmed = intake.get("reference_photo_confirmed") is True
     photo_path = Path(photo)
 
-    # Byte-identical to the actual marina file is ground truth: it always blocks,
-    # even when reference_photo_confirmed is set, because the bytes are provably wrong.
-    repo_root = project
-    while repo_root.parent != repo_root and not (repo_root / "private").is_dir():
-        repo_root = repo_root.parent
-    wrong_ref = repo_root / "private" / "references" / "clear-right-pair.jpg"
-    if wrong_ref.exists() and photo_path.exists():
-        try:
-            if _sha256(wrong_ref) == _sha256(photo_path):
-                errors.append(
-                    "Reference photo is byte-identical to private/references/clear-right-pair.jpg "
-                    "(marina couple, not patio woman+dog+chair)"
-                )
-        except OSError:
-            pass
+    # Known-wrong by content hash is ground truth: it always blocks, even when
+    # reference_photo_confirmed is set, because the bytes are provably wrong. This does
+    # not depend on the private/ originals being present (they are gitignored), so the
+    # guard holds in CI and fresh clones. An unreadable photo fails closed.
+    try:
+        digest = _sha256(photo_path)
+    except OSError as exc:
+        errors.append(f"Reference photo could not be read for validation: {exc}")
+        return ReferenceValidationResult(ok=False, errors=errors, warnings=warnings)
+    if digest in KNOWN_WRONG_REFERENCE_SHA256:
+        errors.append(
+            "Reference photo content matches a known-wrong source "
+            "(marina couple / World Cup neighbors), not the patio woman+dog+chair scene"
+        )
 
     # A path/provenance name match is a heuristic backstop. When the human has
     # confirmed these exact (byte-different) bytes, treat a marker hit as a warning —

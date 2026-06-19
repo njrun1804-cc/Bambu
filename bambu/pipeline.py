@@ -389,6 +389,16 @@ def _run_scene_strategy(
             else:
                 record("scale-to-bed", "skip", "within design envelope", str(printable_stl))
 
+    if not printable_stl.exists():
+        # e.g. --skip-meshy on a project with no prior scene-full.stl. Record a fail step
+        # rather than returning a missing path that crashes the downstream review.
+        record(
+            "meshy scene",
+            "fail",
+            f"no scene STL at {printable_stl}; run without --skip-meshy to generate it",
+        )
+        return None
+
     return printable_stl
 
 

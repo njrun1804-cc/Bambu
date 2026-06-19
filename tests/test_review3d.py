@@ -160,6 +160,47 @@ class Review3dTests(unittest.TestCase):
         self.assertEqual(export.call_args.kwargs["revision"], "v4")
 
 
+    def test_skip_export_fit_gate_uses_real_bounding_box(self):
+        import struct
+
+        from bambu.review3d import review_project_3d
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project = root / "projects" / "demo"
+            project.mkdir(parents=True)
+            (project / "project.yaml").write_text(
+                "slug: demo\ncurrent_revision: v1\nprinter:\n  build_volume_mm: [180, 180, 180]\n"
+            )
+            outputs = root / "outputs"
+            outputs.mkdir()
+            # Oversized tetrahedron: 300mm in X exceeds the 180mm A1 mini bed.
+            vertices = [(0, 0, 0), (300, 0, 0), (0, 1, 0), (0, 0, 1)]
+            facets = [(0, 2, 1), (0, 1, 3), (1, 2, 3), (0, 3, 2)]
+            stl = outputs / "demo.stl"
+            with open(stl, "wb") as handle:
+                handle.write(b"\0" * 80)
+                handle.write(struct.pack("<I", len(facets)))
+                for a, b, c in facets:
+                    handle.write(struct.pack("<3f", 0, 0, 0))
+                    for idx in (a, b, c):
+                        handle.write(struct.pack("<3f", *vertices[idx]))
+                    handle.write(struct.pack("<H", 0))
+
+            with patch("bambu.review3d.sync_project_artifacts", return_value={"artifacts": []}):
+                report = review_project_3d(
+                    project,
+                    outputs_root=outputs,
+                    render=False,
+                    views=[],
+                    skip_export=True,
+                    skip_freecad=True,
+                )
+
+        # The fit gate must be derived from the real bounding box, not hardcoded True.
+        self.assertGreater(report["bounding_box_mm"][0], 180)
+        self.assertFalse(report["fits_a1_mini"])
+
     def test_inspect_stl_mesh_accepts_watertight_tetrahedron(self):
         import struct
 

@@ -13,7 +13,10 @@ import yaml
 
 from bambu.projects import slugify, validate_project, write_artifact_manifest
 from bambu.context import context_view
-from bambu.reference_validation import KNOWN_WRONG_REFERENCE_MARKERS
+from bambu.reference_validation import (
+    KNOWN_WRONG_REFERENCE_MARKERS,
+    KNOWN_WRONG_REFERENCE_SHA256,
+)
 
 
 ARCHETYPES = ("seated_diorama", "standing_figurines", "relief_plaque")
@@ -87,26 +90,35 @@ def _reject_wrong_reference(
 
     resolved = photo_path.resolve()
     if archetype == "seated_diorama" or slug == "best-buds-chair":
-        photo_digest: str | None = None
+        try:
+            photo_digest: str | None = _sha256(resolved)
+        except OSError:
+            photo_digest = None
+        # Block the literal default files and any byte-identical copy first, so the error
+        # names the offending source. The original mistake was copying clear-right-pair.jpg
+        # to patio-reference.jpg.
         for forbidden in FORBIDDEN_DEFAULT_REFERENCES:
             if not forbidden.exists():
                 continue
-            # Block both the literal file and any renamed byte-identical copy: the
-            # original mistake was copying clear-right-pair.jpg to patio-reference.jpg.
             if resolved == forbidden.resolve():
                 raise ValueError(
                     f"Refusing default neighbor reference ({forbidden.name}) for "
                     f"{slug or archetype}. Provide the actual reference photo path or "
                     "a Cursor chat upload (@cursor)."
                 )
-            if photo_digest is None:
-                photo_digest = _sha256(resolved)
-            if photo_digest == _sha256(forbidden):
+            if photo_digest is not None and photo_digest == _sha256(forbidden):
                 raise ValueError(
                     f"Refusing reference byte-identical to {forbidden.name} (marina "
                     f"neighbors, not the patio woman+dog+chair scene) for {slug or archetype}. "
                     "Provide the actual reference photo path or a Cursor chat upload (@cursor)."
                 )
+        # Content-hash block holds even when the private/ originals are absent (gitignored).
+        if photo_digest is not None and photo_digest in KNOWN_WRONG_REFERENCE_SHA256:
+            raise ValueError(
+                f"Refusing reference with known-wrong content (marina neighbors, not the "
+                f"patio woman+dog+chair scene) for {slug or archetype}. Provide the actual "
+                "reference photo path or a Cursor chat upload (@cursor)."
+            )
 
     if any(marker in photo_path.as_posix().lower() for marker in KNOWN_WRONG_REFERENCE_MARKERS):
         raise ValueError(
@@ -252,7 +264,10 @@ def run_intake(
         intent=intent,
         archetype=archetype,
         photo_rel=f"photos/reference/{dest_photo.name}",
-        reference_photo_confirmed=force_reference,
+        # A one-shot --force-reference bypasses the intake-time rejection but must NOT be
+        # persisted as confirmation: confirmation is a separate, deliberate human step so a
+        # transient override can't permanently disarm the pre-spend subject check.
+        reference_photo_confirmed=False,
         photo_source=photo_source_note,
     )
     _copy_spec_templates(project_dir, archetype=archetype, revision="v1")
