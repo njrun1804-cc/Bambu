@@ -37,6 +37,14 @@ DIORAMA_CONCEPT_PROMPT = (
     "front three-quarter view on white background"
 )
 
+SCENE_IMAGE_TO_3D_EXTRA = {
+    "should_texture": False,
+    "should_remesh": True,
+    "target_polycount": 80000,
+    "decimation_mode": 3,
+    "target_formats": ["stl", "glb"],
+}
+
 
 class MeshyError(Exception):
     """Meshy API or configuration error."""
@@ -152,6 +160,13 @@ class MeshyClient:
         )
         return self.poll_task("creative-lab/figure/v1/prototype", task_id)
 
+    def run_figure_build(self, prototype_task_id: str) -> dict[str, Any]:
+        task_id = self.create_task(
+            "creative-lab/figure/v1/build",
+            {"input_task_id": prototype_task_id},
+        )
+        return self.poll_task("creative-lab/figure/v1/build", task_id)
+
     def run_image_to_3d(self, image_path: Path | str, *, extra: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = {**FDM_HEAD_PAYLOAD_BASE, "image_url": self.image_data_uri(image_path), **(extra or {})}
         task_id = self.create_task("v1/image-to-3d", payload)
@@ -224,6 +239,31 @@ class MeshyClient:
         return urls
 
 
+def concept_prompt_from_intake(project_dir: Path | str) -> str:
+    """Build a text-to-image prompt from references/intake.yaml intent."""
+
+    project = Path(project_dir)
+    intake_path = project / "references" / "intake.yaml"
+    if not intake_path.exists():
+        return DIORAMA_CONCEPT_PROMPT
+    intake = yaml.safe_load(intake_path.read_text()) or {}
+    intent = str(intake.get("intent", "")).strip()
+    pose = str((intake.get("agent_fill") or {}).get("pose", "")).strip()
+    cues = (intake.get("agent_fill") or {}).get("recognition_cues") or []
+    cue_text = ", ".join(str(c) for c in cues[:6])
+    parts = [
+        "Chibi collectible figurine diorama concept sheet, toy caricature proportions,",
+        "single-color matte PLA figurine, clean silhouette, front three-quarter view on white background.",
+    ]
+    if intent:
+        parts.append(intent + ".")
+    if pose:
+        parts.append(pose + ".")
+    if cue_text:
+        parts.append(f"Recognition cues: {cue_text}.")
+    return " ".join(parts)
+
+
 def resolve_reference_photo(project_dir: Path | str) -> Path | None:
     """Find the primary reference photo for Meshy concept/head jobs."""
 
@@ -256,28 +296,74 @@ def resolve_head_crop(project_dir: Path | str, subject: str) -> Path:
     )
 
 
+def _load_provenance(project: Path) -> dict[str, Any]:
+    provenance_path = project / "mesh" / "provenance.yaml"
+    if not provenance_path.exists():
+        return {}
+    return yaml.safe_load(provenance_path.read_text()) or {}
+
+
+def _export_meshy_model(task: dict[str, Any], dest: Path, *, client: MeshyClient) -> Path:
+    """Download Meshy model_urls (STL preferred, else GLB→STL via trimesh)."""
+
+    urls = client.extract_model_urls(task)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    stl_url = urls.get("stl")
+    if stl_url:
+        client.download_url(stl_url, dest)
+        return dest
+
+    glb_url = urls.get("glb") or urls.get("model_url")
+    if not glb_url:
+        raise MeshyError(f"No STL/GLB URL in Meshy task: {list(urls)}")
+    glb_path = dest.with_suffix(".glb")
+    client.download_url(glb_url, glb_path)
+    try:
+        import trimesh
+    except ImportError as exc:
+        raise MeshyError("trimesh is required to convert Meshy GLB exports to STL") from exc
+
+    loaded = trimesh.load(glb_path, force="mesh")
+    if isinstance(loaded, trimesh.Scene):
+        meshes = [g for g in loaded.geometry.values() if isinstance(g, trimesh.Trimesh)]
+        if not meshes:
+            raise MeshyError(f"No mesh geometry in GLB: {glb_path}")
+        loaded = trimesh.util.concatenate(meshes) if len(meshes) > 1 else meshes[0]
+    if not isinstance(loaded, trimesh.Trimesh):
+        raise MeshyError(f"Unexpected GLB content type: {type(loaded)}")
+    loaded.export(dest)
+    return dest
+
+
 def meshy_concept(
     project_dir: Path | str,
     *,
     photo: Path | str | None = None,
     client: MeshyClient | None = None,
+    mode: str = "auto",
 ) -> dict[str, Any]:
-    """Run Figure prototype (or text-to-image fallback) and save concept PNG."""
+    """Run Figure prototype, text-to-image from intake, or text-to-image fallback."""
 
     project = Path(project_dir)
-    image = Path(photo) if photo else resolve_reference_photo(project)
-    if image is None or not image.exists():
-        raise FileNotFoundError("Reference photo not found for meshy concept")
-
     mesh_client = client or MeshyClient.from_env()
     dest = project / "photos" / "reference" / "concept-meshy.png"
     endpoint = "creative-lab/figure/v1/prototype"
     task: dict[str, Any]
-    try:
-        task = mesh_client.run_figure_prototype(image)
-    except MeshyError:
+    if mode == "prompt":
         endpoint = "v1/text-to-image"
-        task = mesh_client.run_text_to_image(DIORAMA_CONCEPT_PROMPT)
+        task = mesh_client.run_text_to_image(concept_prompt_from_intake(project))
+    else:
+        image = Path(photo) if photo else resolve_reference_photo(project)
+        if image is None or not image.exists():
+            raise FileNotFoundError("Reference photo not found for meshy concept")
+        if mode == "photo":
+            task = mesh_client.run_figure_prototype(image)
+        else:
+            try:
+                task = mesh_client.run_figure_prototype(image)
+            except MeshyError:
+                endpoint = "v1/text-to-image"
+                task = mesh_client.run_text_to_image(concept_prompt_from_intake(project))
 
     urls = mesh_client.extract_model_urls(task)
     image_url = urls.get("image_url") or urls.get("png") or urls.get("result_url")
@@ -299,6 +385,103 @@ def meshy_concept(
     }
     write_mesh_provenance(project, provenance)
     return {"concept_path": str(dest), "task": task, "endpoint": endpoint}
+
+
+def meshy_figure_build(
+    project_dir: Path | str,
+    *,
+    prototype_task_id: str | None = None,
+    client: MeshyClient | None = None,
+) -> dict[str, Any]:
+    """Build a full chibi figure STL from a Figure prototype task (Creative Lab)."""
+
+    project = Path(project_dir)
+    mesh_client = client or MeshyClient.from_env()
+    prov = _load_provenance(project)
+    proto_id = prototype_task_id or (prov.get("concept") or {}).get("task_id")
+    if not proto_id:
+        raise MeshyError(
+            "figure-build requires --prototype-task-id or an existing concept.task_id in mesh/provenance.yaml. "
+            "Run: bambu meshy concept <project>"
+        )
+
+    task = mesh_client.run_figure_build(str(proto_id))
+    mesh_dir = project / "mesh"
+    mesh_dir.mkdir(parents=True, exist_ok=True)
+    dest = mesh_dir / "figure-full.stl"
+    _export_meshy_model(task, dest, client=mesh_client)
+    task_id = str(task.get("id") or task.get("task_id") or "")
+
+    provenance = prov
+    provenance["figure_build"] = {
+        "task_id": task_id,
+        "prototype_task_id": str(proto_id),
+        "endpoint": "creative-lab/figure/v1/build",
+        "credits": task.get("consumed_credits", 30),
+        "artifact": "mesh/figure-full.stl",
+    }
+    write_mesh_provenance(project, provenance)
+    intake = mesh_intake(
+        project,
+        file=dest,
+        role="figure_full",
+        meshy_task_id=task_id,
+        endpoint="creative-lab/figure/v1/build",
+    )
+    return {"stl_path": str(dest), "task": task, "prototype_task_id": str(proto_id), "intake": intake}
+
+
+def meshy_scene(
+    project_dir: Path | str,
+    *,
+    image: Path | str | None = None,
+    client: MeshyClient | None = None,
+) -> dict[str, Any]:
+    """Image-to-3d on a full concept sheet or reference photo — unified scene mesh."""
+
+    project = Path(project_dir)
+    if image is not None:
+        source = Path(image)
+    else:
+        concept = project / "photos" / "reference" / "concept-meshy.png"
+        source = concept if concept.exists() else resolve_reference_photo(project)
+    if source is None or not source.exists():
+        raise FileNotFoundError(
+            "Scene source not found. Pass --image or run bambu meshy concept to create concept-meshy.png."
+        )
+
+    mesh_client = client or MeshyClient.from_env()
+    task = mesh_client.run_image_to_3d(
+        source,
+        extra={
+            "target_polycount": 80000,
+            "should_remesh": True,
+            "model_type": "standard",
+        },
+    )
+    mesh_dir = project / "mesh"
+    mesh_dir.mkdir(parents=True, exist_ok=True)
+    dest = mesh_dir / "scene-full.stl"
+    _export_meshy_model(task, dest, client=mesh_client)
+    task_id = str(task.get("id") or task.get("task_id") or "")
+
+    prov = _load_provenance(project)
+    prov["scene"] = {
+        "task_id": task_id,
+        "endpoint": "v1/image-to-3d",
+        "source_image": str(source.relative_to(project)) if source.is_relative_to(project) else str(source),
+        "credits": task.get("consumed_credits", 20),
+        "artifact": "mesh/scene-full.stl",
+    }
+    write_mesh_provenance(project, prov)
+    intake = mesh_intake(
+        project,
+        file=dest,
+        role="scene_full",
+        meshy_task_id=task_id,
+        endpoint="v1/image-to-3d",
+    )
+    return {"stl_path": str(dest), "source_image": str(source), "task": task, "intake": intake}
 
 
 def meshy_head(

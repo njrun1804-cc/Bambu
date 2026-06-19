@@ -6,7 +6,9 @@ lane: hybrid
 archetype: seated_diorama
 status: cad
 current_revision: v1
-next_safe_action: run meshy concept + export-body, then fuse-mesh
+next_safe_action: >-
+  Replace patio-reference.jpg with seated woman+dog photo, then
+  `uv run bambu meshy concept projects/best-buds-chair && uv run bambu meshy scene projects/best-buds-chair`
 printer:
   model: Bambu Lab A1 mini
   build_volume_mm: [180, 180, 180]

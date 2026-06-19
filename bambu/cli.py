@@ -205,11 +205,40 @@ def build_parser() -> argparse.ArgumentParser:
     meshy_concept = meshy_sub.add_parser("concept", help="Figure prototype or text-to-image concept sheet.")
     meshy_concept.add_argument("project", type=Path, help="Project directory.")
     meshy_concept.add_argument("--photo", type=Path, default=None, help="Override reference photo path.")
+    meshy_concept.add_argument(
+        "--mode",
+        choices=["auto", "photo", "prompt"],
+        default="auto",
+        help="auto=figure prototype with prompt fallback; photo=prototype only; prompt=intent-driven text-to-image.",
+    )
 
     meshy_head = meshy_sub.add_parser("head", help="Image-to-3d head mesh from cropped photo.")
     meshy_head.add_argument("project", type=Path, help="Project directory.")
     meshy_head.add_argument("--subject", required=True, choices=["woman", "dog"], help="Head subject id.")
     meshy_head.add_argument("--crop", type=Path, default=None, help="Override crop image path.")
+
+    meshy_figure_build = meshy_sub.add_parser(
+        "figure-build",
+        help="Creative Lab figure build: full chibi figure STL from prototype task.",
+    )
+    meshy_figure_build.add_argument("project", type=Path, help="Project directory.")
+    meshy_figure_build.add_argument(
+        "--prototype-task-id",
+        default=None,
+        help="Figure prototype task id (default: mesh/provenance.yaml concept.task_id).",
+    )
+
+    meshy_scene = meshy_sub.add_parser(
+        "scene",
+        help="Image-to-3d on concept sheet or reference photo — unified scene mesh (replaces head fusion).",
+    )
+    meshy_scene.add_argument("project", type=Path, help="Project directory.")
+    meshy_scene.add_argument(
+        "--image",
+        type=Path,
+        default=None,
+        help="Override source image (default: photos/reference/concept-meshy.png).",
+    )
 
     meshy_analyze = meshy_sub.add_parser("analyze", help="Free Meshy analyze-printability report.")
     meshy_analyze.add_argument("project", type=Path, help="Project directory.")
@@ -235,7 +264,10 @@ def build_parser() -> argparse.ArgumentParser:
     meshy_sub.add_parser("balance", help="Print remaining Meshy credits.")
 
     meshy_poll = meshy_sub.add_parser("poll", help="Poll a Meshy task by type and id.")
-    meshy_poll.add_argument("task_type", choices=["image-to-3d", "figure-prototype", "analyze", "remesh", "repair"])
+    meshy_poll.add_argument(
+        "task_type",
+        choices=["image-to-3d", "figure-prototype", "figure-build", "analyze", "remesh", "repair"],
+    )
     meshy_poll.add_argument("task_id", help="Meshy task id.")
 
     from bambu.intake import archetypes_with_templates
@@ -734,11 +766,20 @@ def _mesh_intake(args: argparse.Namespace) -> int:
 
 
 def _meshy(args: argparse.Namespace) -> int:
-    from bambu.meshy import MeshyClient, MeshyError, meshy_analyze, meshy_concept, meshy_head
+    from bambu.meshy import (
+        MeshyClient,
+        MeshyError,
+        meshy_analyze,
+        meshy_concept,
+        meshy_figure_build,
+        meshy_head,
+        meshy_scene,
+    )
 
     poll_paths = {
         "image-to-3d": "v1/image-to-3d",
         "figure-prototype": "creative-lab/figure/v1/prototype",
+        "figure-build": "creative-lab/figure/v1/build",
         "analyze": "v1/print/analyze",
         "remesh": "v1/remesh",
         "repair": "v1/print/repair",
@@ -746,12 +787,20 @@ def _meshy(args: argparse.Namespace) -> int:
     try:
         if args.meshy_command == "concept":
             client = MeshyClient.from_env() if not getattr(args, "photo", None) else None
-            result = meshy_concept(args.project, photo=args.photo, client=client)
-            print(f"Concept sheet: {result['concept_path']}")
+            result = meshy_concept(args.project, photo=args.photo, client=client, mode=args.mode)
+            print(f"Concept sheet: {result['concept_path']} ({result['endpoint']})")
             return 0
         if args.meshy_command == "head":
             result = meshy_head(args.project, subject=args.subject, crop=args.crop)
             print(f"Head STL: {result['stl_path']}")
+            return 0
+        if args.meshy_command == "figure-build":
+            result = meshy_figure_build(args.project, prototype_task_id=args.prototype_task_id)
+            print(f"Figure STL: {result['stl_path']}")
+            return 0
+        if args.meshy_command == "scene":
+            result = meshy_scene(args.project, image=args.image)
+            print(f"Scene STL: {result['stl_path']} (from {result['source_image']})")
             return 0
         if args.meshy_command == "analyze":
             if not args.subject and not args.task_id:

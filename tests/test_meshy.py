@@ -8,9 +8,12 @@ from bambu.meshy import (
     TEST_MODE_API_KEY,
     MeshyClient,
     MeshyError,
+    concept_prompt_from_intake,
     meshy_analyze,
     meshy_concept,
+    meshy_figure_build,
     meshy_head,
+    meshy_scene,
     resolve_head_crop,
 )
 
@@ -60,6 +63,23 @@ class MeshyTests(unittest.TestCase):
             with self.assertRaises(MeshyError):
                 meshy_analyze(project, client=MeshyClient(api_key=TEST_MODE_API_KEY))
 
+    def test_concept_prompt_from_intake_uses_intent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "demo"
+            refs = project / "references"
+            refs.mkdir(parents=True)
+            (refs / "intake.yaml").write_text(
+                "intent: Woman with glasses and tri-color dog on patio chair diorama\n"
+                "agent_fill:\n"
+                "  pose: seated on patio chair\n"
+                "  recognition_cues:\n"
+                "    - glasses ridge\n"
+                "    - dog floppy ears\n"
+            )
+            prompt = concept_prompt_from_intake(project)
+            self.assertIn("patio chair", prompt)
+            self.assertIn("glasses ridge", prompt)
+
     @patch.object(MeshyClient, "run_figure_prototype")
     @patch.object(MeshyClient, "download_url")
     @patch.object(MeshyClient, "extract_model_urls")
@@ -107,6 +127,49 @@ class MeshyTests(unittest.TestCase):
 
             self.assertTrue(Path(result["stl_path"]).exists())
             self.assertIn("woman-head.stl", result["stl_path"])
+
+    @patch("bambu.meshy._export_meshy_model")
+    @patch.object(MeshyClient, "run_figure_build")
+    def test_meshy_figure_build_uses_provenance_prototype(self, build, export):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "demo"
+            mesh = project / "mesh"
+            mesh.mkdir(parents=True)
+            (project / "project.yaml").write_text("slug: demo\ncurrent_revision: v1\n")
+            (mesh / "provenance.yaml").write_text(
+                "concept:\n  task_id: proto-123\n"
+            )
+            build.return_value = {"id": "build-task", "consumed_credits": 30}
+            dest = mesh / "figure-full.stl"
+            dest.write_bytes(b"stl")
+            export.return_value = dest
+
+            result = meshy_figure_build(project, client=MeshyClient(api_key=TEST_MODE_API_KEY))
+
+            build.assert_called_once_with("proto-123")
+            self.assertIn("figure-full.stl", result["stl_path"])
+
+    @patch("bambu.meshy._export_meshy_model")
+    @patch.object(MeshyClient, "run_image_to_3d")
+    def test_meshy_scene_defaults_to_concept_sheet(self, i23d, export):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "demo"
+            ref = project / "photos" / "reference"
+            ref.mkdir(parents=True)
+            concept = ref / "concept-meshy.png"
+            concept.write_bytes(b"png")
+            (project / "project.yaml").write_text("slug: demo\ncurrent_revision: v1\n")
+            i23d.return_value = {"id": "scene-task", "consumed_credits": 20}
+            dest = project / "mesh" / "scene-full.stl"
+            dest.parent.mkdir(parents=True)
+            dest.write_bytes(b"stl")
+            export.return_value = dest
+
+            result = meshy_scene(project, client=MeshyClient(api_key=TEST_MODE_API_KEY))
+
+            i23d.assert_called_once()
+            self.assertEqual(i23d.call_args.args[0], concept)
+            self.assertIn("scene-full.stl", result["stl_path"])
 
 
 if __name__ == "__main__":
