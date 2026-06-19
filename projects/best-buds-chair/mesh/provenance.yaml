@@ -2,14 +2,18 @@ status: meshy_pipeline_complete
 reference_audit:
   mistake: Marina couple photo (clear-right-pair.jpg) sent to Meshy Figure prototype instead of patio woman+dog+chair
   meshy_concept_from_photo_not_prompt: true
-  real_patio_photo_found: false
+  real_patio_photo_found: true
+  real_patio_photo_source: >-
+    ~/Library/Application Support/Cursor/User/workspaceStorage/empty-window/images/3BE8F09C-8766-4010-8E7C-D2A5155E8940_1_105_c-95714b30-c249-42b9-92d0-63e591c52d47.png
 balance_check:
   attempted_at: '2026-06-18T22:46:00+00:00'
   http_status: 200
   balance_before: 1100
   balance_after: 1036
 reference_photo: photos/reference/patio-reference.jpg
-reference_source: private/references/clear-right-pair.jpg
+reference_source: >-
+  Cursor upload cache (empty-window/images/3BE8F09C-8766-4010-8E7C-D2A5155E8940_1_105_c-95714b30-c249-42b9-92d0-63e591c52d47.png)
+  — previously private/references/clear-right-pair.jpg (marina couple, wrong)
 crops:
   woman: photos/reference/crop-woman.jpg
   dog: photos/reference/crop-dog.jpg

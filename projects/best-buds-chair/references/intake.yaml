@@ -3,11 +3,11 @@ slug: best-buds-chair
 intent: Woman with glasses and tri-color dog on patio chair diorama
 archetype: seated_diorama
 reference_photo: photos/reference/patio-reference.jpg
-reference_photo_confirmed: false
+reference_photo_confirmed: true
 created_at: "2026-06-18T00:00:00+00:00"
 reference_audit:
   mistake: >-
-    patio-reference.jpg was copied from private/references/clear-right-pair.jpg
+    patio-reference.jpg was previously copied from private/references/clear-right-pair.jpg
     (World Cup neighbors marina couple walking on a dock). Meshy Figure prototype
     faithfully reproduced that standing couple — not the seated woman+dog+chair scene.
   meshy_input_photo: photos/reference/patio-reference.jpg
@@ -16,13 +16,13 @@ reference_audit:
   meshy_concept_task_id: 019edce9-d25c-7b7b-8c40-adba2a816cc7
   meshy_concept_mode: photo (default auto), not --mode prompt
   real_patio_photo_search: >-
-    Not found on disk (searched ~/Pictures, ~/Downloads, ~/Desktop, CC/Bambu/private/,
-    mdfind for patio/dog/chair/best-buds/clear-right-pair filenames, 2026-06-19).
-  wrong_photo_backup: photos/reference/patio-reference.WRONG-marina-couple.jpg
+    Found in Cursor upload cache from original chat (2026-06-18): ~/Library/Application
+    Support/Cursor/User/workspaceStorage/empty-window/images/3BE8F09C-8766-4010-8E7C-D2A5155E8940_1_105_c-95714b30-c249-42b9-92d0-63e591c52d47.png
+    (iPhone 17 Pro, 768×1024, 2026-04-05). Copied to photos/reference/patio-reference.jpg.
+  wrong_photo_backup: photos/reference/patio-reference-wrong-marina.jpg
   next_step: >-
-    Drop the real patio woman+dog+chair photo at photos/reference/patio-reference.jpg,
-    set reference_photo_confirmed: true, then rerun meshy concept (--mode photo) or
-    meshy concept --mode prompt if no photo.
+    Rerun meshy concept (--mode photo) with confirmed patio reference, or meshy concept
+    --mode prompt if photo-mode still underperforms.
 agent_fill:
   subjects:
     - id: woman
