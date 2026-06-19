@@ -72,6 +72,34 @@ class ReferenceValidationTests(unittest.TestCase):
             result = validate_reference_photo(project, photo=photo)
             self.assertTrue(result.ok)
 
+    def test_confirmed_flag_does_not_mask_marina_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp) / "demo"
+            refs = project / "references"
+            refs.mkdir(parents=True)
+            marina_bytes = b"the-exact-marina-couple-bytes"
+            private_refs = project / "private" / "references"
+            private_refs.mkdir(parents=True)
+            (private_refs / "clear-right-pair.jpg").write_bytes(marina_bytes)
+            photo = project / "photos" / "reference" / "patio-reference.jpg"
+            photo.parent.mkdir(parents=True)
+            photo.write_bytes(marina_bytes)
+            (refs / "intake.yaml").write_text(
+                yaml.safe_dump(
+                    {
+                        "intent": "Woman with dog on patio chair",
+                        "reference_photo": "photos/reference/patio-reference.jpg",
+                        "reference_photo_confirmed": True,
+                    }
+                )
+            )
+            result = validate_reference_photo(project, photo=photo)
+            self.assertFalse(result.ok)
+            self.assertTrue(any("byte-identical" in err for err in result.errors))
+
+            forced = validate_reference_photo(project, photo=photo, force=True)
+            self.assertTrue(forced.ok)
+
     @patch.object(MeshyClient, "run_figure_prototype")
     @patch.object(MeshyClient, "download_url")
     @patch.object(MeshyClient, "extract_model_urls")

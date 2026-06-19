@@ -89,7 +89,8 @@ def validate_reference_photo(
     intake = _load_intake(project)
     provenance = _load_provenance(project)
 
-    if intake.get("reference_photo_confirmed") is True or force:
+    # An explicit human override (--force-reference) bypasses every check.
+    if force:
         return ReferenceValidationResult(ok=True)
 
     if photo is None:
@@ -114,19 +115,11 @@ def validate_reference_photo(
         errors.append("Reference photo not found for validation")
         return ReferenceValidationResult(ok=False, errors=errors, warnings=warnings)
 
+    confirmed = intake.get("reference_photo_confirmed") is True
     photo_path = Path(photo)
-    wrong_markers = _matches_known_wrong_source(
-        photo_path,
-        photo_path.name,
-        provenance.get("reference_source"),
-        provenance.get("reference_photo"),
-    )
-    if wrong_markers:
-        errors.append(
-            "Reference photo matches World Cup / marina neighbor sources "
-            f"({', '.join(wrong_markers)}), not the seated woman+dog+chair scene in intake.yaml"
-        )
 
+    # Byte-identical to the actual marina file is ground truth: it always blocks,
+    # even when reference_photo_confirmed is set, because the bytes are provably wrong.
     repo_root = project
     while repo_root.parent != repo_root and not (repo_root / "private").is_dir():
         repo_root = repo_root.parent
@@ -140,6 +133,33 @@ def validate_reference_photo(
                 )
         except OSError:
             pass
+
+    # A path/provenance name match is a heuristic backstop. When the human has
+    # confirmed these exact (byte-different) bytes, treat a marker hit as a warning —
+    # it is usually stale audit prose ("previously clear-right-pair.jpg") rather than
+    # the wrong photo. Without confirmation it remains a hard error.
+    wrong_markers = _matches_known_wrong_source(
+        photo_path,
+        photo_path.name,
+        provenance.get("reference_source"),
+        provenance.get("reference_photo"),
+    )
+    if wrong_markers:
+        marker_message = (
+            "Reference photo matches World Cup / marina neighbor sources "
+            f"({', '.join(wrong_markers)}), not the seated woman+dog+chair scene in intake.yaml"
+        )
+        if confirmed:
+            warnings.append(marker_message)
+        else:
+            errors.append(marker_message)
+
+    if errors:
+        return ReferenceValidationResult(ok=False, errors=errors, warnings=warnings)
+
+    # Past the known-wrong gate, a human confirmation flag clears the subject check.
+    if confirmed:
+        return ReferenceValidationResult(ok=True, warnings=warnings)
 
     required = intake_subject_requirements(intake)
     if any(required.values()):
