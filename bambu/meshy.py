@@ -13,6 +13,7 @@ from typing import Any
 import yaml
 
 from bambu.mesh_lane import mesh_intake, write_mesh_provenance
+from bambu.reference_validation import ensure_reference_photo_valid
 
 
 MESHY_BASE_URL = "https://api.meshy.ai/openapi"
@@ -341,6 +342,7 @@ def meshy_concept(
     photo: Path | str | None = None,
     client: MeshyClient | None = None,
     mode: str = "auto",
+    force_reference: bool = False,
 ) -> dict[str, Any]:
     """Run Figure prototype, text-to-image from intake, or text-to-image fallback."""
 
@@ -356,6 +358,15 @@ def meshy_concept(
         image = Path(photo) if photo else resolve_reference_photo(project)
         if image is None or not image.exists():
             raise FileNotFoundError("Reference photo not found for meshy concept")
+        try:
+            ensure_reference_photo_valid(
+                project,
+                photo=image,
+                force=force_reference,
+                context="meshy concept",
+            )
+        except ValueError as exc:
+            raise MeshyError(str(exc)) from exc
         if mode == "photo":
             task = mesh_client.run_figure_prototype(image)
         else:

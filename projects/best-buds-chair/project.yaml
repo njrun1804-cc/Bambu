@@ -7,8 +7,10 @@ archetype: seated_diorama
 status: cad
 current_revision: v1
 next_safe_action: >-
-  Replace patio-reference.jpg with seated woman+dog photo, then
-  `uv run bambu meshy concept projects/best-buds-chair && uv run bambu meshy scene projects/best-buds-chair`
+  Find real patio woman+dog+chair photo (not on disk yet). Replace
+  photos/reference/patio-reference.jpg, set reference_photo_confirmed: true in
+  references/intake.yaml, then `uv run bambu meshy concept projects/best-buds-chair
+  --mode photo` OR `--mode prompt` if no photo. Do not spend Meshy credits until photo confirmed.
 printer:
   model: Bambu Lab A1 mini
   build_volume_mm: [180, 180, 180]

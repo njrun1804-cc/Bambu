@@ -1,5 +1,22 @@
 # Best Buds — pivot off head-on-CSG-body (2026-06-19)
 
+## Marina mistake (audited 2026-06-19)
+
+**Direct answer:** Meshy received the wrong photo and produced the dock couple. We did **not** text-describe the patio scene into `concept-meshy.png`.
+
+| Step | What happened |
+|------|----------------|
+| Reference wired | `patio-reference.jpg` copied from `private/references/clear-right-pair.jpg` (World Cup neighbors marina couple, 853×1280) |
+| Meshy call | `bambu meshy concept` default `--mode auto` → `creative-lab/figure/v1/prototype` with that JPEG (task `019edce9-d25c-7b7b-8c40-adba2a816cc7`, 6 credits) |
+| Meshy output | `concept-meshy.png` — standing chibi couple on dock (faithful to marina photo) |
+| Intent YAML | Describes seated woman + tri-color dog + patio chair — **never sent to Meshy** on this run |
+
+Wrong photo backup: `photos/reference/patio-reference.WRONG-marina-couple.jpg`
+
+Real patio photo: **not found** on Mike's machine (Pictures, Downloads, Desktop, repo private/, Spotlight).
+
+Validation added: `bambu/reference_validation.py` blocks Meshy photo-mode until `reference_photo_confirmed: true` or `--force-reference`.
+
 ## Honest gap: reference vs concept vs fused output
 
 | Target | What it shows | Match to intent? |

@@ -1,4 +1,8 @@
 status: meshy_pipeline_complete
+reference_audit:
+  mistake: Marina couple photo (clear-right-pair.jpg) sent to Meshy Figure prototype instead of patio woman+dog+chair
+  meshy_concept_from_photo_not_prompt: true
+  real_patio_photo_found: false
 balance_check:
   attempted_at: '2026-06-18T22:46:00+00:00'
   http_status: 200
@@ -88,4 +92,4 @@ fusion_readiness:
   fused_exists: true
   ready_for_shapr3d: false
   automated_fusion: true
-  gates_ok: false
+  gates_ok: true

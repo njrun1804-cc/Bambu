@@ -211,6 +211,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="auto",
         help="auto=figure prototype with prompt fallback; photo=prototype only; prompt=intent-driven text-to-image.",
     )
+    meshy_concept.add_argument(
+        "--force-reference",
+        action="store_true",
+        help="Skip reference/intake subject validation after manual photo review.",
+    )
 
     meshy_head = meshy_sub.add_parser("head", help="Image-to-3d head mesh from cropped photo.")
     meshy_head.add_argument("project", type=Path, help="Project directory.")
@@ -285,6 +290,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         choices=archetypes_with_templates(),
         help="Scene archetype with spec templates (defaults from intent keywords).",
+    )
+    intake.add_argument(
+        "--force-reference",
+        action="store_true",
+        help="Allow known-wrong reference filenames after manual review.",
     )
 
     spec_sheet = subparsers.add_parser(
@@ -787,7 +797,13 @@ def _meshy(args: argparse.Namespace) -> int:
     try:
         if args.meshy_command == "concept":
             client = MeshyClient.from_env() if not getattr(args, "photo", None) else None
-            result = meshy_concept(args.project, photo=args.photo, client=client, mode=args.mode)
+            result = meshy_concept(
+                args.project,
+                photo=args.photo,
+                client=client,
+                mode=args.mode,
+                force_reference=getattr(args, "force_reference", False),
+            )
             print(f"Concept sheet: {result['concept_path']} ({result['endpoint']})")
             return 0
         if args.meshy_command == "head":
@@ -972,6 +988,7 @@ def _intake(args: argparse.Namespace) -> int:
         slug=args.slug,
         root=args.root,
         archetype=archetype,
+        force_reference=getattr(args, "force_reference", False),
     )
     print("Photo intake")
     print("------------")

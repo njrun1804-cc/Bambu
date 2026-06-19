@@ -3,7 +3,26 @@ slug: best-buds-chair
 intent: Woman with glasses and tri-color dog on patio chair diorama
 archetype: seated_diorama
 reference_photo: photos/reference/patio-reference.jpg
+reference_photo_confirmed: false
 created_at: "2026-06-18T00:00:00+00:00"
+reference_audit:
+  mistake: >-
+    patio-reference.jpg was copied from private/references/clear-right-pair.jpg
+    (World Cup neighbors marina couple walking on a dock). Meshy Figure prototype
+    faithfully reproduced that standing couple — not the seated woman+dog+chair scene.
+  meshy_input_photo: photos/reference/patio-reference.jpg
+  meshy_input_source: private/references/clear-right-pair.jpg
+  meshy_concept_endpoint: creative-lab/figure/v1/prototype
+  meshy_concept_task_id: 019edce9-d25c-7b7b-8c40-adba2a816cc7
+  meshy_concept_mode: photo (default auto), not --mode prompt
+  real_patio_photo_search: >-
+    Not found on disk (searched ~/Pictures, ~/Downloads, ~/Desktop, CC/Bambu/private/,
+    mdfind for patio/dog/chair/best-buds/clear-right-pair filenames, 2026-06-19).
+  wrong_photo_backup: photos/reference/patio-reference.WRONG-marina-couple.jpg
+  next_step: >-
+    Drop the real patio woman+dog+chair photo at photos/reference/patio-reference.jpg,
+    set reference_photo_confirmed: true, then rerun meshy concept (--mode photo) or
+    meshy concept --mode prompt if no photo.
 agent_fill:
   subjects:
     - id: woman

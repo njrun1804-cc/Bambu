@@ -46,12 +46,25 @@ def run_intake(
     archetype: str = "seated_diorama",
     privacy: str = "private",
     material: str = "Bambu PLA Basic",
+    force_reference: bool = False,
 ) -> dict[str, Any]:
     """Copy reference photo, scaffold project tree, and emit agent-fillable intake."""
 
     photo_path = Path(photo)
     if not photo_path.exists():
         raise FileNotFoundError(f"Reference photo not found: {photo_path}")
+
+    wrong_markers = (
+        "clear-right-pair",
+        "group-right-pair",
+        "world-cup-neighbors",
+        "world_cup_neighbors",
+    )
+    if not force_reference and any(marker in photo_path.as_posix().lower() for marker in wrong_markers):
+        raise ValueError(
+            f"Refusing intake from known wrong reference ({photo_path.name}). "
+            "Use the actual patio woman+dog+chair photo or pass --force-reference after review."
+        )
 
     if archetype not in ARCHETYPES:
         raise ValueError(f"archetype must be one of {', '.join(ARCHETYPES)}")
@@ -81,6 +94,7 @@ def run_intake(
         intent=intent,
         archetype=archetype,
         photo_rel=f"photos/reference/{photo_path.name}",
+        reference_photo_confirmed=force_reference,
     )
     _copy_spec_templates(project_dir, archetype=archetype, revision="v1")
     manifest = _write_project_manifest(
@@ -179,6 +193,7 @@ def _write_intake_yaml(
     intent: str,
     archetype: str,
     photo_rel: str,
+    reference_photo_confirmed: bool = False,
 ) -> Path:
     data = {
         "schema_version": 1,
@@ -186,6 +201,7 @@ def _write_intake_yaml(
         "intent": intent,
         "archetype": archetype,
         "reference_photo": photo_rel,
+        "reference_photo_confirmed": reference_photo_confirmed,
         "created_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
         "agent_fill": {
             "subjects": [],
