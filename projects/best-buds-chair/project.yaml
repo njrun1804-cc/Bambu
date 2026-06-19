@@ -3,14 +3,16 @@ slug: best-buds-chair
 intent: Woman with glasses and tri-color dog on patio chair diorama — Best Buds
 privacy: private
 lane: hybrid
+mesh_strategy: scene
 archetype: seated_diorama
 status: cad
 current_revision: v1
 next_safe_action: >-
-  Find real patio woman+dog+chair photo (not on disk yet). Replace
-  photos/reference/patio-reference.jpg, set reference_photo_confirmed: true in
-  references/intake.yaml, then `uv run bambu meshy concept projects/best-buds-chair
-  --mode photo` OR `--mode prompt` if no photo. Do not spend Meshy credits until photo confirmed.
+  Patio reference photo is installed and confirmed. Run the photo-first scene
+  pipeline: `export MESHY_API_KEY=msy_...` then `uv run bambu pipeline run
+  projects/best-buds-chair --force-meshy --no-render`. This runs meshy concept
+  (--mode photo, auto prompt fallback) → meshy scene → scale-to-bed →
+  release-check → slice. No fuse-mesh, no head crops, no mid-run prompts.
 printer:
   model: Bambu Lab A1 mini
   build_volume_mm: [180, 180, 180]

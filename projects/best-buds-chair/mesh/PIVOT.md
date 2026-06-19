@@ -1,5 +1,23 @@
 # Best Buds — pivot off head-on-CSG-body (2026-06-19)
 
+## Status update (photo installed, photo-first is primary)
+
+**The real patio photo is now installed and confirmed.** `photos/reference/patio-reference.jpg`
+is the genuine woman+dog+chair patio photo (recovered from the Cursor upload cache; see
+`references/intake.yaml` → `reference_audit`), and `reference_photo_confirmed: true`.
+
+The project now runs the **photo-first scene lane** as the primary path
+(`project.yaml` → `mesh_strategy: scene`):
+
+```
+patio-reference.jpg → meshy concept (--mode photo) → meshy scene → scale-to-bed → release-check → slice
+```
+
+`meshy concept` runs in `--mode photo` and **auto-falls back once to `--mode prompt`**
+(text-to-image from `intake.yaml`) if the Figure prototype fails or the reference trips
+known-wrong (marina) scene markers — no mid-run prompt. The `fuse-mesh` / head-on-CSG path
+below is retained only as historical context and for other (non-scene) projects.
+
 ## Marina mistake (audited 2026-06-19)
 
 **Direct answer:** Meshy received the wrong photo and produced the dock couple. We did **not** text-describe the patio scene into `concept-meshy.png`.
@@ -13,7 +31,9 @@
 
 Wrong photo backup: `photos/reference/patio-reference.WRONG-marina-couple.jpg`
 
-Real patio photo: **not found** on Mike's machine (Pictures, Downloads, Desktop, repo private/, Spotlight).
+Real patio photo: **now installed** (recovered from the Cursor upload cache and copied to
+`photos/reference/patio-reference.jpg`; see `references/intake.yaml` → `reference_audit`). This was
+unresolved when first audited (not in Pictures, Downloads, Desktop, repo private/, or Spotlight).
 
 Validation added: `bambu/reference_validation.py` blocks Meshy photo-mode until `reference_photo_confirmed: true` or `--force-reference`.
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 import subprocess
@@ -14,12 +15,15 @@ from bambu.handoff import inspect_print_handoff
 from bambu.mesh import analyze_islands
 from bambu.mesh_fusion import fuse_hybrid_project
 from bambu.mesh_lane import load_fusion_manifest
-from bambu.meshy import MeshyError, meshy_concept, meshy_head
+from bambu.meshy import MeshyError, meshy_concept, meshy_head, meshy_scene
 from bambu.preflight import detect_tools
 from bambu.printability import analyze_stl_overhangs, load_printer_context, qc_sliced_3mf
 from bambu.projects import load_project, sync_project_artifacts
+from bambu.reference_validation import validate_reference_photo
 from bambu.review3d import load_review_views, review_project_3d
 from bambu.slicer import SliceRequest, build_slice_plan, run_slice, sliced_output_for_stl
+
+DEFAULT_DESIGN_ENVELOPE_MM: tuple[float, float, float] = (118.0, 65.0, 68.0)
 
 
 @dataclass
@@ -161,34 +165,41 @@ def run_project_pipeline(
         record("design-check", "fail", "; ".join(design_report["errors"]))
         return result
 
-    if lane == "hybrid" and not opts.skip_meshy:
-        concept_path = project / "photos" / "reference" / "concept-meshy.png"
-        if concept_path.exists() and not opts.force_meshy:
-            record("meshy concept", "skip", "concept sheet exists", str(concept_path))
-        else:
-            try:
-                concept = meshy_concept(project)
-                record("meshy concept", "pass", "concept sheet generated", concept["concept_path"])
-            except MeshyError as exc:
-                record("meshy concept", "fail", str(exc))
-                return result
-
-        for subject in _head_subjects(project, rev):
-            head_path = project / "mesh" / f"{subject}-head.stl"
-            if head_path.exists() and not opts.force_meshy:
-                record(f"meshy head {subject}", "skip", "head STL exists", str(head_path))
-                continue
-            try:
-                head = meshy_head(project, subject=subject)
-                record(f"meshy head {subject}", "pass", "head STL generated", head["stl_path"])
-            except MeshyError as exc:
-                record(f"meshy head {subject}", "fail", str(exc))
-                return result
-    elif lane == "hybrid":
-        record("meshy", "skip", "--skip-meshy")
-
     rev_base = rev.split(".", 1)[0]
-    if lane == "hybrid":
+    mesh_strategy = str(manifest.get("mesh_strategy", "fuse")) if lane == "hybrid" else None
+
+    if lane == "hybrid" and mesh_strategy == "scene":
+        printable_stl = _run_scene_strategy(project, manifest, opts, record)
+        if printable_stl is None:
+            return result
+        result.artifacts["stl"] = str(printable_stl)
+    elif lane == "hybrid":
+        if not opts.skip_meshy:
+            concept_path = project / "photos" / "reference" / "concept-meshy.png"
+            if concept_path.exists() and not opts.force_meshy:
+                record("meshy concept", "skip", "concept sheet exists", str(concept_path))
+            else:
+                try:
+                    concept = meshy_concept(project)
+                    record("meshy concept", "pass", "concept sheet generated", concept["concept_path"])
+                except MeshyError as exc:
+                    record("meshy concept", "fail", str(exc))
+                    return result
+
+            for subject in _head_subjects(project, rev):
+                head_path = project / "mesh" / f"{subject}-head.stl"
+                if head_path.exists() and not opts.force_meshy:
+                    record(f"meshy head {subject}", "skip", "head STL exists", str(head_path))
+                    continue
+                try:
+                    head = meshy_head(project, subject=subject)
+                    record(f"meshy head {subject}", "pass", "head STL generated", head["stl_path"])
+                except MeshyError as exc:
+                    record(f"meshy head {subject}", "fail", str(exc))
+                    return result
+        else:
+            record("meshy", "skip", "--skip-meshy")
+
         body_stl = _resolve_repo_path(
             project,
             _body_stl_rel(project, rev, slug, rev_base),
@@ -206,21 +217,7 @@ def run_project_pipeline(
             )
             body_stl = Path(export["stl"])
             record("export-body", "pass", "body scaffold exported", str(body_stl))
-    else:
-        model_stl = opts.outputs_root / f"{slug}-{rev_base}.stl"
-        if model_stl.exists():
-            record("export-build123d", "skip", "STL exists", str(model_stl))
-        else:
-            export = export_build123d_project(
-                project,
-                output_dir=opts.outputs_root,
-                output_slug=f"{slug}-{rev_base}",
-                revision=rev,
-            )
-            model_stl = Path(export["stl"])
-            record("export-build123d", "pass", "model exported", str(model_stl))
 
-    if lane == "hybrid":
         fused_rel = _fused_stl_rel(project, rev, slug, rev_base)
         fused_stl = _resolve_repo_path(project, fused_rel, outputs_root=opts.outputs_root)
         if fused_stl.exists() and not opts.force_fuse:
@@ -243,6 +240,18 @@ def run_project_pipeline(
         printable_stl = fused_stl
         result.artifacts["fused_stl"] = str(fused_stl)
     else:
+        model_stl = opts.outputs_root / f"{slug}-{rev_base}.stl"
+        if model_stl.exists():
+            record("export-build123d", "skip", "STL exists", str(model_stl))
+        else:
+            export = export_build123d_project(
+                project,
+                output_dir=opts.outputs_root,
+                output_slug=f"{slug}-{rev_base}",
+                revision=rev,
+            )
+            model_stl = Path(export["stl"])
+            record("export-build123d", "pass", "model exported", str(model_stl))
         printable_stl = model_stl
         result.artifacts["stl"] = str(printable_stl)
 
@@ -322,6 +331,156 @@ def run_project_pipeline(
         "then manually send to the printer when satisfied."
     )
     return result
+
+
+RecordFn = Callable[..., None]
+
+
+def _run_scene_strategy(
+    project: Path,
+    manifest: dict[str, Any],
+    opts: PipelineOptions,
+    record: RecordFn,
+) -> Path | None:
+    """Photo→concept→scene mesh lane. Returns printable STL, or None on failure.
+
+    Skips head crops, build123d body scaffold, and fuse-mesh entirely.
+    """
+
+    concept_path = project / "photos" / "reference" / "concept-meshy.png"
+    scene_stl = project / "mesh" / "scene-full.stl"
+
+    if opts.skip_meshy:
+        record("meshy", "skip", "--skip-meshy")
+    else:
+        if opts.force_meshy:
+            _archive_marina_concept(concept_path, record)
+        if concept_path.exists() and not opts.force_meshy:
+            record("meshy concept", "skip", "concept sheet exists", str(concept_path))
+        elif _run_concept_with_fallback(project, record) is None:
+            return None
+
+        if scene_stl.exists() and not opts.force_meshy:
+            record("meshy scene", "skip", "scene STL exists", str(scene_stl))
+        else:
+            try:
+                scene = meshy_scene(project)
+                scene_stl = Path(scene["stl_path"])
+                record("meshy scene", "pass", "scene mesh generated", str(scene_stl))
+            except MeshyError as exc:
+                record("meshy scene", "fail", str(exc))
+                return None
+
+    printable_stl = scene_stl
+    envelope = _design_envelope_mm(manifest)
+    if envelope and printable_stl.exists():
+        try:
+            scaled = scale_mesh_to_envelope(printable_stl, envelope)
+        except Exception as exc:  # trimesh load/scale failures should not crash the run
+            record("scale-to-bed", "warn", f"scale skipped: {exc}", str(printable_stl))
+        else:
+            if scaled.get("scaled"):
+                record(
+                    "scale-to-bed",
+                    "pass",
+                    f"scaled x{scaled['factor']:.4f} to fit {envelope}",
+                    str(printable_stl),
+                )
+            else:
+                record("scale-to-bed", "skip", "within design envelope", str(printable_stl))
+
+    return printable_stl
+
+
+def _run_concept_with_fallback(project: Path, record: RecordFn) -> dict[str, Any] | None:
+    """Run meshy concept in photo mode; auto-retry once in prompt mode.
+
+    Falls back to ``mode="prompt"`` (text-to-image from intake) when the Figure
+    prototype fails or the concept's scene markers look wrong (e.g. the stale
+    marina source). Deterministic and fully logged — no user prompt.
+    """
+
+    try:
+        concept = meshy_concept(project, mode="photo")
+    except MeshyError as exc:
+        record("meshy concept", "warn", f"photo mode failed ({exc}); retrying mode=prompt")
+        return _concept_prompt_fallback(project, record)
+
+    if not _concept_scene_markers_ok(project):
+        record("meshy concept", "warn", "photo concept flagged wrong scene markers; retrying mode=prompt")
+        return _concept_prompt_fallback(project, record)
+
+    record("meshy concept", "pass", "concept sheet generated (photo)", concept["concept_path"])
+    return concept
+
+
+def _concept_prompt_fallback(project: Path, record: RecordFn) -> dict[str, Any] | None:
+    try:
+        concept = meshy_concept(project, mode="prompt")
+    except MeshyError as exc:
+        record("meshy concept", "fail", f"prompt fallback failed: {exc}")
+        return None
+    record("meshy concept", "pass", "concept sheet generated (prompt fallback)", concept["concept_path"])
+    return concept
+
+
+def _concept_scene_markers_ok(project: Path) -> bool:
+    """True when the reference photo does not trip known-wrong scene markers."""
+
+    result = validate_reference_photo(project)
+    flagged = [*result.errors, *result.warnings]
+    return not any(
+        ("marina" in msg.lower()) or ("world cup" in msg.lower()) for msg in flagged
+    )
+
+
+def _archive_marina_concept(concept_path: Path, record: RecordFn) -> None:
+    """Archive a stale concept-meshy.png before regenerating from the real photo."""
+
+    if not concept_path.exists():
+        return
+    archive = concept_path.with_name("concept-meshy.WRONG-marina.png")
+    concept_path.replace(archive)
+    record("invalidate-marina", "pass", f"archived stale concept to {archive.name}", str(archive))
+
+
+def _design_envelope_mm(manifest: dict[str, Any]) -> list[float] | None:
+    dims = (manifest.get("constraints") or {}).get("dimensions_mm")
+    if isinstance(dims, (list, tuple)) and len(dims) == 3:
+        try:
+            return [float(d) for d in dims]
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def scale_mesh_to_envelope(stl_path: Path | str, envelope_mm: Sequence[float]) -> dict[str, Any]:
+    """Uniformly scale an STL down so its bounding box fits the design envelope.
+
+    Orientation-independent: compares sorted mesh extents to the sorted envelope
+    and applies the smallest shrink factor needed. Never scales up. Writes the
+    scaled mesh back to ``stl_path`` when a shrink is required.
+    """
+
+    import trimesh
+
+    path = Path(stl_path)
+    mesh = trimesh.load(path, force="mesh")
+    extents = [float(e) for e in mesh.extents]
+    sorted_extents = sorted(extents, reverse=True)
+    sorted_envelope = sorted((float(e) for e in envelope_mm), reverse=True)
+    factors = [env / ext for env, ext in zip(sorted_envelope, sorted_extents) if ext > 0]
+    factor = min(factors) if factors else 1.0
+    scaled = factor < 1.0
+    if scaled:
+        mesh.apply_scale(factor)
+        mesh.export(path)
+    return {
+        "scaled": scaled,
+        "factor": factor,
+        "original_extents": extents,
+        "envelope": list(sorted_envelope),
+    }
 
 
 def _head_subjects(project: Path, revision: str) -> list[str]:
