@@ -15,8 +15,8 @@ Bambu turns reference photos into reviewable build123d dioramas and slicing plan
 4. `bambu design-check <project> --revision v1` — must pass before CAD.
 5. Author `source/v1/model.py` using `bambu.cad.archetypes.<archetype>` helpers. Multifuse entire scene; assert `len(scene.solids()) == 1`.
 6. `bambu release-check <project> --revision v1` — FreeCAD, watertight mesh, overhangs, islands, Blender renders (150px thumbnail + face closeups).
-7. Human approves renders, then **Bambu Studio GUI slice** (authoritative time/cost).
-8. `bambu qc <sliced.gcode.3mf> --stl <model.stl>` + `bambu handoff`.
+7. `bambu pipeline run <project> --skip-meshy --no-render` — headless slice, QC, and handoff (skips existing artifacts).
+8. Open `.gcode.3mf` in Bambu Studio for final plate/support review; `bambu qc` + `bambu handoff` are included in pipeline run.
 9. Manual print only after review.
 10. `bambu record_print_result` after physical print.
 
@@ -26,6 +26,7 @@ Bambu turns reference photos into reviewable build123d dioramas and slicing plan
 - CLI: `uv run bambu intake ~/photo.jpg --intent "..." --slug my-project`
 - CLI: `uv run bambu design-check projects/best-buds-chair --revision v1`
 - CLI: `uv run bambu release-check projects/best-buds-chair --revision v1 --no-render`
+- CLI: `uv run bambu pipeline run projects/best-buds-chair --skip-meshy --no-render`
 - CLI: `uv run bambu render-spec-sheet projects/best-buds-chair --revision v1`
 - MCP: `bambu_release_check`, `bambu_qc`, `bambu_intake`
 

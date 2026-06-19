@@ -38,8 +38,17 @@ Fill `designs/v1/*.yaml` from the reference photo (see `agents/prompts/intake-fr
 3. Agent fills `designs/v1/*.yaml`; run `uv run bambu design-check <project> --revision v1`.
 4. Author `source/v1/model.py` with `bambu.cad.archetypes.*` helpers (Multifuse + single solid).
 5. `uv run bambu release-check <project> --revision v1` until all gates pass; human approves 150px thumbnail + face closeups.
-6. Slice in **Bambu Studio GUI**, then `uv run bambu qc <sliced> --stl <model.stl>` and `uv run bambu handoff`.
-7. Print only after manual review; record with `uv run bambu record-print-result`.
+6. **One command to print-ready handoff** (headless slice + QC):
+
+```bash
+uv run bambu pipeline run projects/<slug> --skip-meshy --no-render
+```
+
+Skip `--skip-meshy` on first run to also generate Meshy concept + heads when `MESHY_API_KEY` is set. The pipeline skips steps when artifacts already exist.
+
+7. Open the generated `.gcode.3mf` in Bambu Studio for final plate/support review, then print only after manual approval; record with `uv run bambu record-print-result`.
+
+Legacy manual slice path: `uv run bambu slice outputs/<slug>-v1-fused.stl`, then `uv run bambu qc` and `uv run bambu handoff`.
 
 ## Agent Operating Substrate
 

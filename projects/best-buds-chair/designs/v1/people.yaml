@@ -19,7 +19,7 @@ people:
       hair: solid_swept_cap
       smile: engraved_broad_arc
     review:
-      face_center: [14, 4, 48]
+      face_center: [20, 2, 50.5]
   - id: dog
     name: Dog
     role: lap_companion
@@ -34,7 +34,7 @@ people:
       ears: fused_floppy_capsules
       nose: raised_front_bump
     review:
-      face_center: [-6, 6, 44]
+      face_center: [0, -4, 26]
 shared_rules:
   face_style: rounded chibi heads, broad low-relief landmarks
   no_photorealism: true

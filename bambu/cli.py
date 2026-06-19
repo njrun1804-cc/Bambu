@@ -262,6 +262,38 @@ def build_parser() -> argparse.ArgumentParser:
     spec_sheet.add_argument("project", type=Path, help="Project directory.")
     spec_sheet.add_argument("--revision", default="v1", help="Design revision.")
     spec_sheet.add_argument("--output", type=Path, default=None, help="Optional output markdown path.")
+
+    pipeline = subparsers.add_parser(
+        "pipeline",
+        help="End-to-end project automation from specs through slice, QC, and handoff.",
+    )
+    pipeline_sub = pipeline.add_subparsers(dest="pipeline_command", required=True)
+    pipeline_run = pipeline_sub.add_parser(
+        "run",
+        help="Run the full pipeline: design-check, hybrid mesh steps, release-check, headless slice, qc, handoff.",
+    )
+    pipeline_run.add_argument("project", type=Path, help="Project directory containing project.yaml.")
+    pipeline_run.add_argument("--revision", default=None, help="Design revision under designs/<revision>.")
+    pipeline_run.add_argument("--slicer", default="bambu-studio", choices=["bambu-studio", "orcaslicer", "orca"])
+    pipeline_run.add_argument("--outputs-root", type=Path, default=Path("outputs"))
+    pipeline_run.add_argument("--skip-meshy", action="store_true", help="Skip Meshy concept/head generation.")
+    pipeline_run.add_argument("--force-meshy", action="store_true", help="Re-run Meshy even when artifacts exist.")
+    pipeline_run.add_argument("--force-fuse", action="store_true", help="Re-export body and re-run fuse-mesh.")
+    pipeline_run.add_argument("--force-slice", action="store_true", help="Re-slice even when .gcode.3mf exists.")
+    pipeline_run.add_argument("--no-render", action="store_true", help="Skip Blender preview rendering.")
+    pipeline_run.add_argument("--no-repair", action="store_true", help="Skip pymeshlab repair during fuse-mesh.")
+    pipeline_run.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
+    pipeline_run.add_argument("--slice-timeout", type=int, default=600, help="Slicer CLI timeout in seconds.")
+
+    slice_cmd = subparsers.add_parser(
+        "slice",
+        help="Headlessly slice an STL to .gcode.3mf via Bambu Studio/OrcaSlicer CLI.",
+    )
+    slice_cmd.add_argument("model", type=Path, help="Input STL path.")
+    slice_cmd.add_argument("--output", type=Path, default=None, help="Output .gcode.3mf path.")
+    slice_cmd.add_argument("--slicer", default="bambu-studio", choices=["bambu-studio", "orcaslicer", "orca"])
+    slice_cmd.add_argument("--material", default="Bambu PLA Basic", help="Filament profile name.")
+    slice_cmd.add_argument("--timeout", type=int, default=600, help="Slicer CLI timeout in seconds.")
     return parser
 
 
@@ -308,6 +340,10 @@ def main(argv: list[str] | None = None) -> int:
         return _intake(args)
     if args.command == "render-spec-sheet":
         return _render_spec_sheet(args)
+    if args.command == "pipeline":
+        return _pipeline(args)
+    if args.command == "slice":
+        return _slice(args)
 
     raise AssertionError(f"Unhandled command: {args.command}")
 
@@ -872,6 +908,7 @@ def _release_check(args: argparse.Namespace) -> int:
     print()
     print(f"release check: {'PASS' if all_ok else 'FAIL'}")
     print("Next: slice, then `bambu qc <sliced.gcode.3mf> --stl <model.stl>`, then `bambu handoff`.")
+    print("Or run end-to-end: `uv run bambu pipeline run <project> --skip-meshy --no-render`.")
     print(review.get("manual_boundary", ""))
     return 0 if all_ok else 1
 
@@ -914,4 +951,78 @@ def _render_spec_sheet(args: argparse.Namespace) -> int:
         print(f"Wrote {args.output}")
     else:
         print(sheet)
+    return 0
+
+
+def _pipeline(args: argparse.Namespace) -> int:
+    from bambu.pipeline import PipelineOptions, run_project_pipeline
+
+    if args.pipeline_command != "run":
+        raise AssertionError(f"Unhandled pipeline command: {args.pipeline_command}")
+
+    options = PipelineOptions(
+        revision=args.revision,
+        slicer=args.slicer,
+        outputs_root=args.outputs_root,
+        skip_meshy=args.skip_meshy,
+        force_meshy=args.force_meshy,
+        force_fuse=args.force_fuse,
+        force_slice=args.force_slice,
+        no_render=args.no_render,
+        repair=not args.no_repair,
+        slice_timeout_seconds=args.slice_timeout,
+    )
+    result = run_project_pipeline(args.project, options)
+    if args.json:
+        args.json.parent.mkdir(parents=True, exist_ok=True)
+        args.json.write_text(json.dumps(result.as_dict(), indent=2) + "\n")
+
+    print("Pipeline run")
+    print("============")
+    print(f"project: {result.project}")
+    print(f"revision: {result.revision}")
+    print(f"lane: {result.lane}")
+    print()
+    for step in result.steps:
+        artifact = f" -> {step.artifact}" if step.artifact else ""
+        detail = f" ({step.detail})" if step.detail else ""
+        print(f"- {step.name}: {step.status}{detail}{artifact}")
+    print()
+    if result.artifacts:
+        print("Artifacts")
+        print("---------")
+        for key, value in result.artifacts.items():
+            print(f"- {key}: {value}")
+        print()
+    print(f"pipeline: {'PASS' if result.ok else 'FAIL'}")
+    print(f"QC: {'pass' if result.qc_ok else 'FAIL'}")
+    print(f"handoff ready: {'yes' if result.handoff_ready else 'no'}")
+    if result.manual_boundaries:
+        print()
+        print("Manual boundary")
+        print("---------------")
+        for line in result.manual_boundaries:
+            print(line)
+    return 0 if result.ok else 1
+
+
+def _slice(args: argparse.Namespace) -> int:
+    from bambu.slicer import slice_stl, sliced_output_for_stl
+
+    output = args.output or sliced_output_for_stl(args.model)
+    report = slice_stl(
+        args.model,
+        output,
+        slicer=args.slicer,
+        executable=_detected_slicer_path(args.slicer),
+        material=args.material,
+        timeout_seconds=args.timeout,
+    )
+    print("Headless slice")
+    print("--------------")
+    print(f"model: {report['model']}")
+    print(f"sliced: {report['sliced']}")
+    print(f"material: {report['profiles']['material']}")
+    print()
+    print("Next: `bambu qc` and `bambu handoff` on the sliced file.")
     return 0

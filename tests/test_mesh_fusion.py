@@ -42,9 +42,8 @@ class MeshFusionTests(unittest.TestCase):
         tiny = trimesh.creation.box(extents=[0.01, 0.01, 0.01])
         tiny.apply_translation([20, 20, 20])
         combined = trimesh.util.concatenate([large, tiny])
-        cleaned = clean_head_mesh(combined, min_faces=100)
-        self.assertGreater(len(cleaned.faces), 10)
-        self.assertLess(len(cleaned.faces), len(combined.faces))
+        cleaned = clean_head_mesh(combined)
+        self.assertEqual(len(cleaned.faces), len(large.faces))
 
     def test_trim_mesh_below_z_removes_low_faces(self):
         from bambu.mesh_fusion import trim_mesh_below_z
@@ -67,10 +66,9 @@ class MeshFusionTests(unittest.TestCase):
 
         mesh = trimesh.creation.box(extents=[2, 2, 2])
         aligned = align_head_to_stub(mesh, (10.0, 5.0, 20.0), target_width_mm=4.0, scale=1.0, sink_mm=1.0)
-        center = aligned.bounds.mean(axis=0)
-        self.assertAlmostEqual(center[0], 10.0, places=1)
-        self.assertAlmostEqual(center[1], 5.0, places=1)
-        self.assertGreaterEqual(center[2], 19.0)
+        self.assertAlmostEqual(float(aligned.bounds[0, 0]), 8.0, places=1)
+        self.assertAlmostEqual(float(aligned.bounds[0, 1]), 3.0, places=1)
+        self.assertAlmostEqual(float(aligned.bounds[0, 2]), 19.0, places=1)
 
     def test_fuse_head_specs_unions_fixture_meshes(self):
         from bambu.mesh_fusion import HeadFusionSpec, fuse_head_specs

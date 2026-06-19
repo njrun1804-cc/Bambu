@@ -14,6 +14,7 @@ names the loop's current position in `next_safe_action`; start there.
 4. bambu meshy concept + heads  -> concept PNG + mesh/*-head.stl (MESHY_API_KEY)
 5. bambu export-body            -> body STEP/STL with head stubs
 6. bambu fuse-mesh              -> outputs/<slug>-<rev>-fused.stl (automated)
+7. bambu pipeline run           -> headless slice + qc + handoff (.gcode.3mf)
 7. bambu release-check --stl    -> mesh + overhangs + islands + Blender renders
 8. human approves renders       -> 150px thumbnail + face closeups vs concept sheet
 9. Bambu Studio GUI slice       -> authoritative time/cost (read print-path-qc.md)

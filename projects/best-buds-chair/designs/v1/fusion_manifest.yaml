@@ -4,31 +4,27 @@ head_meshes:
 - id: woman
   source: mesh/woman-head.stl
   align:
-    x: 14
-    y: 4
-    z: 48
-    scale: 1.0
     stub:
     - 20
     - 2
     - 50.5
-    sink_mm: 12
+    scale: 1.0
+    sink_mm: 5
+    cap_fraction: 0.5
     rotation:
-    - -90
     - 0
     - 0
+    - 180
 - id: dog
   source: mesh/dog-head.stl
   align:
-    x: -6
-    y: 6
-    z: 44
-    scale: 1.05
     stub:
     - 0
     - -4
     - 26
-    sink_mm: 12
+    scale: 1.05
+    sink_mm: 0
+    cap_fraction: 0.4
     rotation:
     - 0
     - 180
@@ -37,4 +33,4 @@ fused_artifact: outputs/best-buds-chair-v1-fused.stl
 fusion_tool: bambu
 fusion_status: complete
 fusion_strategy: merge
-fusion_completed_at: '2026-06-18T23:32:28+00:00'
+fusion_completed_at: '2026-06-19T01:08:48+00:00'

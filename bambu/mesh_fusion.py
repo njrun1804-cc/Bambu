@@ -25,19 +25,28 @@ from bambu.projects import load_project, sync_project_artifacts
 
 
 DEFAULT_HEAD_ROTATIONS: dict[str, tuple[float, float, float]] = {
-    # Meshy image-to-3d exports are Y-up; tuned on best-buds-chair v1.
-    "woman": (-90.0, 0.0, 0.0),
+    # Meshy image-to-3d exports are Y-up; seated_diorama faces -Y.
+    "woman": (0.0, 0.0, 180.0),
     "dog": (0.0, 180.0, 0.0),
+}
+
+DEFAULT_HEAD_CAP_FRACTION: dict[str, float] = {
+    # Meshy bust crops include shoulders/feet; keep the upper cap only.
+    "woman": 0.50,
+    "dog": 0.40,
 }
 
 DEFAULT_MIN_COMPONENT_FACES = 20
 DEFAULT_MIN_COMPONENT_EXTENT_MM = 0.8
 DEFAULT_SEAT_TRIM_MARGIN_MM = 4.0
 DEFAULT_BRIDGE_SINK_OVERLAP_MM = 1.0
-DEFAULT_BRIDGE_TOP_LIFT_MM = 4.0
+DEFAULT_BRIDGE_TOP_LIFT_MM = 3.0
+DEFAULT_BRIDGE_RADIUS_FACTOR = 0.28
+DEFAULT_BRIDGE_MIN_RADIUS_MM = 3.0
+DEFAULT_BRIDGE_SECTIONS = 16
 DEFAULT_SEAM_WELD_MM = 1.25
-DEFAULT_SEAM_WELD_RADIUS_MM = 14.0
-DEFAULT_SEAM_WELD_Z_BAND_MM = 20.0
+DEFAULT_SEAM_WELD_RADIUS_MM = 10.0
+DEFAULT_SEAM_WELD_Z_BAND_MM = 8.0
 DEFAULT_HEAD_REPAIR_MERGE_PCT = 0.5
 DEFAULT_FUSED_REPAIR_MERGE_PCT = 0.25
 
@@ -54,6 +63,8 @@ class HeadFusionSpec:
     source: Path
     stub_center: tuple[float, float, float]
     target_width_mm: float
+    target_height_mm: float | None = None
+    cap_fraction: float | None = None
     bridge_center: tuple[float, float, float] | None = None
     scale: float = 1.0
     sink_mm: float = DEFAULT_SINK_MM
@@ -86,7 +97,12 @@ def fuse_hybrid_project(
 
     specs = _load_head_specs(project, fusion, repo_root, revision=rev)
     fused_mesh = fuse_head_specs(body_mesh, specs)
-    stub_centers = [spec.stub_center for spec in specs]
+    stub_centers = [
+        center
+        for spec in specs
+        for center in (spec.bridge_center, spec.stub_center)
+        if center is not None
+    ]
     if repair:
         fused_mesh, mesh_report = repair_fused_mesh(fused_mesh, stub_centers=stub_centers)
     else:
@@ -164,13 +180,16 @@ def fuse_head_specs(body: trimesh.Trimesh, specs: list[HeadFusionSpec]) -> trime
             raise ValueError(f"Head mesh must be a single Trimesh: {spec.source}")
         cleaned = clean_head_mesh(raw)
         cleaned = repair_head_mesh(cleaned)
+        rotation_deg = spec.rotation_deg
+        capped = cap_oriented_head(cleaned, rotation_deg, keep_top_fraction=spec.cap_fraction)
         aligned = align_head_to_stub(
-            cleaned,
+            capped,
             spec.stub_center,
             target_width_mm=spec.target_width_mm,
+            target_height_mm=spec.target_height_mm,
             scale=spec.scale,
             sink_mm=spec.sink_mm,
-            rotation_deg=spec.rotation_deg,
+            rotation_deg=(0.0, 0.0, 0.0),
         )
         seat_z = _seat_trim_z(spec)
         trimmed = trim_mesh_below_z(aligned, seat_z)
@@ -186,9 +205,41 @@ def clean_head_mesh(
     min_faces: int = 50,
     min_extent_mm: float = DEFAULT_MIN_COMPONENT_EXTENT_MM,
 ) -> trimesh.Trimesh:
-    """Drop tiny floating components from Meshy exports."""
+    """Drop tiny floating components from Meshy exports.
 
-    return cull_small_components(mesh, min_faces=min_faces, min_extent_mm=min_extent_mm)
+    Meshy image-to-3d often ships a pedestal/base island beside the head; keep the
+    largest component so alignment does not park scrap geometry on the neck stub.
+    """
+
+    parts = mesh.split(only_watertight=False)
+    if len(parts) <= 1:
+        cleaned = mesh.copy()
+    else:
+        ranked = sorted(parts, key=lambda part: len(part.faces), reverse=True)
+        cleaned = ranked[0]
+    cleaned.merge_vertices()
+    cleaned.update_faces(cleaned.unique_faces())
+    cleaned.remove_unreferenced_vertices()
+    return cleaned
+
+
+def cap_oriented_head(
+    mesh: trimesh.Trimesh,
+    rotation_deg: tuple[float, float, float],
+    *,
+    keep_top_fraction: float | None = None,
+) -> trimesh.Trimesh:
+    """Rotate a Meshy export and discard bust/pedestal geometry below the head cap."""
+
+    fraction = 0.55 if keep_top_fraction is None else float(keep_top_fraction)
+    fraction = min(max(fraction, 0.2), 0.9)
+    oriented = mesh.copy()
+    oriented.merge_vertices()
+    for angle, axis in zip(rotation_deg, ([1, 0, 0], [0, 1, 0], [0, 0, 1])):
+        if angle:
+            oriented.apply_transform(trimesh.transformations.rotation_matrix(np.radians(angle), axis))
+    cutoff = float(np.percentile(oriented.vertices[:, 2], (1.0 - fraction) * 100.0))
+    return trim_mesh_below_z(oriented, cutoff)
 
 
 def cull_small_components(
@@ -237,10 +288,10 @@ def neck_bridge(spec: HeadFusionSpec, z_bottom: float) -> trimesh.Trimesh:
     """Cylinder spanning the neck stub so head and body share standing material."""
 
     center = spec.bridge_center or spec.stub_center
-    radius = max(spec.target_width_mm * 0.35, 4.0)
+    radius = max(spec.target_width_mm * DEFAULT_BRIDGE_RADIUS_FACTOR, DEFAULT_BRIDGE_MIN_RADIUS_MM)
     z_top = max(spec.stub_center[2], center[2]) + DEFAULT_BRIDGE_TOP_LIFT_MM
     height = max(z_top - z_bottom, 2.0)
-    bridge = trimesh.creation.cylinder(radius=radius, height=height, sections=24)
+    bridge = trimesh.creation.cylinder(radius=radius, height=height, sections=DEFAULT_BRIDGE_SECTIONS)
     bridge.apply_translation([center[0], center[1], z_bottom + height / 2.0])
     return bridge
 
@@ -254,22 +305,34 @@ def align_head_to_stub(
     stub_center: tuple[float, float, float],
     *,
     target_width_mm: float,
+    target_height_mm: float | None = None,
     scale: float = 1.0,
     sink_mm: float = DEFAULT_SINK_MM,
     rotation_deg: tuple[float, float, float] = (0.0, 0.0, 0.0),
 ) -> trimesh.Trimesh:
-    """Scale, rotate, and seat a Meshy head on a build123d neck stub."""
+    """Rotate, scale, and seat a Meshy head on a build123d neck stub."""
 
     aligned = mesh.copy()
     aligned.merge_vertices()
-    horizontal = max(float(aligned.extents[0]), float(aligned.extents[1]), 1e-6)
-    aligned.apply_scale((target_width_mm * scale) / horizontal)
     for angle, axis in zip(rotation_deg, ([1, 0, 0], [0, 1, 0], [0, 0, 1])):
         if angle:
             aligned.apply_transform(trimesh.transformations.rotation_matrix(np.radians(angle), axis))
-    aligned.apply_translation(np.asarray(stub_center, dtype=float) - aligned.centroid)
-    if sink_mm:
-        aligned.apply_translation([0.0, 0.0, -float(sink_mm)])
+    horizontal = max(float(aligned.extents[0]), float(aligned.extents[1]), 1e-6)
+    scale_factor = (target_width_mm * scale) / horizontal
+    if target_height_mm:
+        vertical = max(float(aligned.extents[2]), 1e-6)
+        scale_factor = min(scale_factor, (target_height_mm * scale) / vertical)
+    aligned.apply_scale(scale_factor)
+    stub = np.asarray(stub_center, dtype=float)
+    centroid = aligned.centroid
+    bottom_z = float(aligned.bounds[0, 2])
+    aligned.apply_translation(
+        [
+            stub[0] - centroid[0],
+            stub[1] - centroid[1],
+            stub[2] - float(sink_mm) - bottom_z,
+        ]
+    )
     aligned.merge_vertices()
     return aligned
 
@@ -301,14 +364,6 @@ def repair_fused_mesh(
     """Best-effort repair pass; returns the repaired mesh and gate metrics."""
 
     repaired = cull_small_components(mesh.copy())
-    if stub_centers:
-        repaired = regional_seam_weld(
-            repaired,
-            stub_centers,
-            radius_mm=DEFAULT_SEAM_WELD_RADIUS_MM,
-            z_band_mm=DEFAULT_SEAM_WELD_Z_BAND_MM,
-            weld_mm=DEFAULT_SEAM_WELD_MM,
-        )
     try:
         repaired = _pymeshlab_repair(repaired, merge_pct=DEFAULT_FUSED_REPAIR_MERGE_PCT)
         repaired = cull_small_components(repaired)
@@ -354,7 +409,8 @@ def regional_seam_weld(
             parent[root_right] = root_left
 
     for left, right in cKDTree(verts).query_pairs(r=float(weld_mm)):
-        if in_region[left] or in_region[right]:
+        # Weld only within the stub neighborhood; OR-welding chains collapse the whole body.
+        if in_region[left] and in_region[right]:
             union(left, right)
 
     groups: dict[int, list[int]] = {}
@@ -422,32 +478,38 @@ def _load_head_specs(
         head_id = str(entry.get("id", "subject"))
         align = entry.get("align") or {}
         stub_values = align.get("stub") or stub_defaults.get(head_id)
-        if not stub_values:
-            stub_values = [align.get("x", 0.0), align.get("y", 0.0), align.get("z", 0.0)]
-        stub_center = (float(stub_values[0]), float(stub_values[1]), float(stub_values[2]))
-        anchor = (
-            float(align.get("x", stub_center[0])),
-            float(align.get("y", stub_center[1])),
-            float(align.get("z", stub_center[2])),
-        )
-        bridge_center = stub_center if anchor != stub_center else None
+        if stub_values:
+            placement = (float(stub_values[0]), float(stub_values[1]), float(stub_values[2]))
+        else:
+            placement = (
+                float(align.get("x", 0.0)),
+                float(align.get("y", 0.0)),
+                float(align.get("z", 0.0)),
+            )
         source = _resolve_project_path(project, repo_root, entry.get("source", ""))
         if not source.exists():
             raise FileNotFoundError(f"Head mesh missing for {head_id}: {source}")
 
         scale = float(align.get("scale", 1.0))
         base_width = float(metrics.get(head_id, {}).get("head_width_mm") or 20.0)
+        base_height = metrics.get(head_id, {}).get("head_height_mm")
         if "target_width_mm" in align:
             target_width = float(align["target_width_mm"])
         else:
             target_width = base_width * scale
+        target_height = float(align["target_height_mm"]) if "target_height_mm" in align else (
+            float(base_height) * scale if base_height else None
+        )
+        cap_fraction = float(align["cap_fraction"]) if "cap_fraction" in align else DEFAULT_HEAD_CAP_FRACTION.get(head_id)
         specs.append(
             HeadFusionSpec(
                 head_id=head_id,
                 source=source,
-                stub_center=anchor,
-                bridge_center=bridge_center,
+                stub_center=placement,
+                bridge_center=None,
                 target_width_mm=target_width,
+                target_height_mm=target_height,
+                cap_fraction=cap_fraction,
                 scale=1.0,
                 sink_mm=float(align.get("sink_mm", DEFAULT_SINK_MM)),
                 rotation_deg=_rotation_for_head(head_id, align),

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import subprocess
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -36,6 +38,20 @@ class SlicePlan:
     command: list[str]
     checklist: list[str]
     profiles: dict[str, str]
+
+
+@dataclass(frozen=True)
+class SliceResult:
+    model_path: Path
+    output_path: Path
+    command: list[str]
+    returncode: int
+    stdout: str
+    stderr: str
+
+    @property
+    def ok(self) -> bool:
+        return self.returncode == 0 and self.output_path.exists()
 
 
 def build_slice_plan(request: SliceRequest) -> SlicePlan:
@@ -99,6 +115,88 @@ def build_slice_plan(request: SliceRequest) -> SlicePlan:
         "filament": str(filament_profile) if filament_profile else "",
     }
     return SlicePlan(tool=tool, command=command, checklist=checklist, profiles=profile_summary)
+
+
+def sliced_output_for_stl(stl_path: Path) -> Path:
+    """Return the default .gcode.3mf path for a printable STL."""
+
+    if stl_path.suffix.lower() == ".stl":
+        return stl_path.with_suffix(".gcode.3mf")
+    return stl_path.with_name(f"{stl_path.name}.gcode.3mf")
+
+
+def run_slice(
+    request: SliceRequest,
+    *,
+    timeout_seconds: int = 600,
+) -> SliceResult:
+    """Slice a model headlessly via Bambu Studio or OrcaSlicer CLI."""
+
+    plan = build_slice_plan(request)
+    request.output_path.parent.mkdir(parents=True, exist_ok=True)
+    result = subprocess.run(
+        plan.command,
+        text=True,
+        capture_output=True,
+        timeout=timeout_seconds,
+    )
+    return SliceResult(
+        model_path=request.model_path,
+        output_path=request.output_path,
+        command=plan.command,
+        returncode=result.returncode,
+        stdout=result.stdout,
+        stderr=result.stderr,
+    )
+
+
+def slice_stl(
+    stl_path: Path,
+    output_path: Path | None = None,
+    *,
+    slicer: str = "bambu-studio",
+    executable: str | None = None,
+    material: str = "Bambu PLA Basic",
+    timeout_seconds: int = 600,
+) -> dict[str, Any]:
+    """Convenience wrapper: slice an STL and raise on failure."""
+
+    output = output_path or sliced_output_for_stl(stl_path)
+    slice_result = run_slice(
+        SliceRequest(
+            model_path=stl_path,
+            output_path=output,
+            slicer=slicer,
+            executable=executable,
+            material=material,
+            resolve_paths=True,
+        ),
+        timeout_seconds=timeout_seconds,
+    )
+    if not slice_result.ok:
+        raise RuntimeError(
+            f"Slicing failed ({slice_result.returncode}): {' '.join(slice_result.command)}\n"
+            f"stdout:\n{slice_result.stdout[-2000:]}\n"
+            f"stderr:\n{slice_result.stderr[-2000:]}"
+        )
+    plan = build_slice_plan(
+        SliceRequest(
+            model_path=stl_path,
+            output_path=output,
+            slicer=slicer,
+            executable=executable,
+            material=material,
+            resolve_paths=True,
+        )
+    )
+    return {
+        "model": str(stl_path.resolve()),
+        "sliced": str(output.resolve()),
+        "command": slice_result.command,
+        "returncode": slice_result.returncode,
+        "profiles": plan.profiles,
+        "checklist": plan.checklist,
+    }
 
 
 def default_a1_mini_profiles(

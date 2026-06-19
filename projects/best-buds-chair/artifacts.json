@@ -2,7 +2,7 @@
   "schema_version": 1,
   "project_slug": "best-buds-chair",
   "revision": "v1",
-  "updated_at": "2026-06-18T23:32:28+00:00",
+  "updated_at": "2026-06-19T01:08:48+00:00",
   "artifacts": [
     {
       "path": "outputs/best-buds-chair-v1-body.step",
@@ -19,10 +19,31 @@
       "generated": true
     },
     {
+      "path": "outputs/best-buds-chair-v1-fused-lightrepair.stl",
+      "kind": "mesh_stl",
+      "sha256": "5562e7420fa9325619a4e11dbe24a7b9f2d1be8a4f0a3316afd7df651dd68f35",
+      "bytes": 4667034,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair-v1-fused-norepair.stl",
+      "kind": "mesh_stl",
+      "sha256": "dd1c67488001923308a5ce537ad4f364a34df24e61e453d65ee8c1f89c610bfd",
+      "bytes": 4668384,
+      "generated": true
+    },
+    {
+      "path": "outputs/best-buds-chair-v1-fused.gcode.3mf",
+      "kind": "sliced_gcode_3mf",
+      "sha256": "3288392af648077158541475ba5f563dd8dbf83907b9fde8668932aeb7251fb1",
+      "bytes": 1206158,
+      "generated": true
+    },
+    {
       "path": "outputs/best-buds-chair-v1-fused.stl",
       "kind": "mesh_stl",
-      "sha256": "72be93c18a68dcb4def40bbbe425cf8f49ebe5b89ec4e4c526491750682023ea",
-      "bytes": 2531584,
+      "sha256": "b27d01d879cfd6b9b81e4f9d599c81cfb20e2af1bc2ff0358af97127fc838518",
+      "bytes": 3937384,
       "generated": true
     },
     {

@@ -57,7 +57,6 @@ def write_fusion_manifest_stub(
         person_id = metric.get("id")
         if not person_id:
             continue
-        center = metric.get("face_center") or [0, 0, 0]
         head_mm = next(
             (
                 p.get("head_mm", {})
@@ -71,14 +70,18 @@ def write_fusion_manifest_stub(
             scale = float(head_mm["width"]) / 20.0
         stub = stub_lookup.get(person_id)
         align: dict[str, Any] = {
-            "x": center[0] if len(center) > 0 else 0.0,
-            "y": center[1] if len(center) > 1 else 0.0,
-            "z": center[2] if len(center) > 2 else 0.0,
             "scale": scale,
             "sink_mm": DEFAULT_SINK_MM,
         }
         if stub:
             align["stub"] = [stub[0], stub[1], stub[2]]
+        else:
+            center = metric.get("face_center") or [0, 0, 0]
+            align["stub"] = [
+                center[0] if len(center) > 0 else 0.0,
+                center[1] if len(center) > 1 else 0.0,
+                center[2] if len(center) > 2 else 0.0,
+            ]
         head_meshes.append(
             {
                 "id": person_id,

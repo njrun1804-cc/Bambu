@@ -1,33 +1,17 @@
-# Meshy head meshes — next steps
+# Best Buds — one-command print-ready handoff
 
-## Automated fusion (heads complete)
-
-Head STLs and body scaffold are ready. Run:
+When Meshy heads and fused STL already exist:
 
 ```bash
-uv run bambu fuse-mesh projects/best-buds-chair --revision v1
-uv run bambu release-check projects/best-buds-chair --revision v1 \
-  --stl outputs/best-buds-chair-v1-fused.stl --skip-export --skip-freecad
+uv run bambu pipeline run projects/best-buds-chair --skip-meshy --no-render
 ```
 
-Fusion manifest stub alignment:
-
-- `mesh/woman-head.stl` → stub `[20, 2, 50.5]`, scale=1.0, sink=5mm
-- `mesh/dog-head.stl` → stub `[0, -4, 26]`, scale=1.05, sink=10mm
-- Output: `outputs/best-buds-chair-v1-fused.stl`
-
-See `docs/learning/hybrid-lane.md` and `designs/v1/fusion_manifest.yaml`.
-
-Optional Shapr3D override: `docs/learning/shapr3d-fusion-workflow.md`.
-
-## Meshy pipeline reference
+First run (generates Meshy concept + heads when `MESHY_API_KEY` is set):
 
 ```bash
-uv run bambu meshy concept projects/best-buds-chair
-uv run bambu meshy head projects/best-buds-chair --subject woman
-uv run bambu meshy head projects/best-buds-chair --subject dog
-uv run bambu meshy analyze projects/best-buds-chair --subject woman
-uv run bambu meshy analyze projects/best-buds-chair --subject dog
+uv run bambu pipeline run projects/best-buds-chair --no-render
 ```
 
-Expected credits (from plan): concept ~6, each head ~20, analyze free.
+Output: `outputs/best-buds-chair-v1-fused.gcode.3mf`
+
+Still manual: open in Bambu Studio for plate/support review and physical print start.
