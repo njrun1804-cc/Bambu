@@ -34,4 +34,3 @@ outputs/*
 *.gcode
 *.gcode.3mf
 *.png
-!projects/*/references/ai-concepts/*.png

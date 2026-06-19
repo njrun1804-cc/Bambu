@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from build123d import FontStyle, Pos, Text, extrude, Plane
+from build123d import FontStyle, Text
 
 from bambu.cad.primitives import front_extrude, rounded_block
 
@@ -36,20 +36,4 @@ def make_nameplate(
         z,
         front_y - proud,
         depth,
-    )
-
-
-def make_deck_text(
-    text: str,
-    *,
-    x: float,
-    y: float,
-    base_z: float,
-    size: float = 6.5,
-    height: float = 1.5,
-    font: str = "Arial",
-):
-    return extrude(
-        Plane.XY.offset(base_z - 0.5) * Pos(x, y) * Text(text, size, font=font, font_style=FontStyle.BOLD),
-        amount=height,
     )

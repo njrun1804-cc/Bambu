@@ -67,20 +67,6 @@ def add_brows(adds: list, *, fx: float, brow_z: float, face_y: float, wide: bool
         )
 
 
-def add_swept_hair_cap(
-    adds: list,
-    *,
-    fx: float,
-    fy: float,
-    head_c: float,
-    head_r: float,
-    clip_tilt: float = -25.0,
-):
-    cap = Pos(fx, fy + 0.6, head_c + 0.3) * ellipsoid(head_r + 1.3, head_r + 1.6)
-    clip = Pos(fx, fy, head_c + 1.0) * Rot(X=clip_tilt) * Pos(0, 0, 22) * Box(46, 46, 44)
-    adds.append(cap & clip)
-
-
 def add_hair_grooves(
     engraves: list,
     *,

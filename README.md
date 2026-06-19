@@ -166,14 +166,14 @@ The example creates two simplified soccer-supporter figures with Brazil-inspired
 
 ## World Cup Neighbors V2 Learning Path
 
-World Cup neighbors v2 is the first build123d learning pass for a personal figurine scene. The active source lives in `projects/world-cup-neighbors/source/model.py`, with project-specific notes in `projects/world-cup-neighbors/source/README.md`.
+World Cup neighbors v2 was the first build123d learning pass for a personal figurine scene. The project is now archived; its source lives in `projects/_archive/world-cup-neighbors/source/model.py`, with project-specific notes in `projects/_archive/world-cup-neighbors/source/README.md`.
 
 Reusable lessons are captured in `docs/learning/build123d-figurine-workflow.md`: chunky attached face cues, structural scene props, low-relief soccer details, and the safe export-review loop before slicing or printing.
 
 Current v2 CAD review command:
 
 ```bash
-uv run python tools/review_3d.py projects/world-cup-neighbors --json outputs/review/world-cup-neighbors/review-report.json
+uv run python tools/review_3d.py projects/_archive/world-cup-neighbors --json outputs/review/world-cup-neighbors/review-report.json
 ```
 
 FreeCAD can report a model as valid and closed while still finding deeper geometry-check warnings. Treat those warnings as design cleanup input before printing the next revision.
@@ -189,17 +189,17 @@ WORLD CUP 2026 deck banner — one fused solid, supportless, sliced at
 (`designs/v4/views.yaml`).
 
 ```bash
-uv run bambu design-check projects/world-cup-neighbors --revision v4
-uv run bambu release-check projects/world-cup-neighbors --revision v4 \
-  --source-file projects/world-cup-neighbors/source/v4/model.py \
+uv run bambu design-check projects/_archive/world-cup-neighbors --revision v4
+uv run bambu release-check projects/_archive/world-cup-neighbors --revision v4 \
+  --source-file projects/_archive/world-cup-neighbors/source/v4/model.py \
   --output-slug world-cup-neighbors-v4 \
-  --views projects/world-cup-neighbors/designs/v4/views.yaml
+  --views projects/_archive/world-cup-neighbors/designs/v4/views.yaml
 ```
 
 The build's full failure catalog and fixes live in
 `docs/learning/occt-step-geometry-rules.md` (CAD-side) and
 `docs/learning/print-path-qc.md` (print-side); the per-revision record is
-`projects/world-cup-neighbors/reviews/008-v4-build-notes.md`.
+`projects/_archive/world-cup-neighbors/reviews/008-v4-build-notes.md`.
 
 ## Public Repo Safety
 

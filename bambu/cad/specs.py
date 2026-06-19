@@ -5,9 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import yaml
-
-from bambu.design_pipeline import SPEC_FILES, load_design_spec
+from bambu.design_pipeline import load_design_spec
 
 
 def load_specs(project_path: Path | str, *, revision: str = "v1") -> dict[str, Any]:
@@ -38,16 +36,3 @@ def character_metrics(specs: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
     return metrics
-
-
-def load_archetype_profile(archetype: str, *, profiles_root: Path = Path("profiles/archetypes")) -> dict[str, Any]:
-    path = profiles_root / f"{archetype}.yaml"
-    if not path.exists():
-        return {}
-    return yaml.safe_load(path.read_text()) or {}
-
-
-def spec_file_paths(project_path: Path | str, revision: str) -> dict[str, Path]:
-    project = Path(project_path)
-    design_dir = project / "designs" / revision
-    return {key: design_dir / filename for key, filename in SPEC_FILES.items()}
