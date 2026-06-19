@@ -1,0 +1,16 @@
+primary_target:
+  path: references/ai-concepts/68869cef-6756-47e8-8d5f-e3901f822af1.png
+  role: visual_contract
+  notes: Colored target is for shape, proportion, face readability, and scene composition. Final print remains single green PLA.
+crop_views:
+  front: [0.350, 0.075, 0.530, 0.472]
+  front-angle: [0.530, 0.075, 0.705, 0.472]
+  dan-head: [0.710, 0.075, 0.815, 0.260]
+  carrie-head: [0.710, 0.270, 0.815, 0.472]
+  top: [0.820, 0.075, 0.985, 0.472]
+visual_failures_to_avoid:
+  - blocky_robot_body
+  - tiny_or_unreadable_face
+  - hair_as_vertical_bars
+  - flat_scaffold_goal_dominating_scene
+  - target_sheet_used_as_moodboard_instead_of_acceptance_test

@@ -83,6 +83,61 @@ class Review3dTests(unittest.TestCase):
         self.assertIn("--background", command)
         self.assertIn("outputs/world-cup-neighbors.stl", command[-1])
         self.assertIn("outputs/review/world-cup-neighbors", command[-1])
+        for name in ("front", "front-angle", "rear-angle", "top", "dan-head", "carrie-head", "low-front"):
+            self.assertIn(f"render({name!r}", command[-1])
+
+    def test_contact_sheet_compares_target_and_candidate_images(self):
+        from PIL import Image
+
+        from bambu.review3d import build_visual_contact_sheet
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "target.png"
+            current = root / "current.png"
+            output = root / "contact.png"
+            Image.new("RGB", (120, 80), (20, 120, 40)).save(target)
+            Image.new("RGB", (100, 100), (40, 180, 80)).save(current)
+
+            result = build_visual_contact_sheet(
+                target_images={"target front": target},
+                current_images={"current front": current},
+                output_path=output,
+                title="v3b visual comparison",
+            )
+
+            self.assertEqual(result["path"], str(output))
+            self.assertTrue(output.exists())
+            with Image.open(output) as sheet:
+                self.assertGreaterEqual(sheet.size[0], 800)
+                self.assertGreaterEqual(sheet.size[1], 350)
+
+    def test_target_concept_crops_create_view_specific_images(self):
+        from PIL import Image
+
+        from bambu.review3d import build_target_review_crops
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            target = root / "target.png"
+            output_dir = root / "crops"
+            Image.new("RGB", (1000, 800), (20, 120, 40)).save(target)
+
+            crops = build_target_review_crops(
+                target,
+                output_dir,
+                crop_regions={
+                    "front": (0.1, 0.1, 0.3, 0.4),
+                    "dan-head": (0.4, 0.1, 0.5, 0.3),
+                },
+            )
+
+            self.assertEqual(set(crops), {"front", "dan-head"})
+            for path in crops.values():
+                self.assertTrue(path.exists())
+                with Image.open(path) as image:
+                    self.assertGreater(image.size[0], 50)
+                    self.assertGreater(image.size[1], 50)
 
     def test_review_project_report_never_contacts_printer(self):
         from bambu.review3d import FreeCADInstall, review_project_3d
@@ -164,7 +219,55 @@ class Review3dTests(unittest.TestCase):
                 )
 
         export.assert_called_once_with(project, output_dir=outputs, source_file=source, output_slug="demo-v3")
+        sync.assert_not_called()
         self.assertEqual(report["project"], "demo-v3")
+
+    def test_review_project_builds_contact_sheet_when_target_image_is_supplied(self):
+        from bambu.review3d import FreeCADInstall, review_project_3d
+
+        freecad = FreeCADInstall(
+            available=False,
+            app=None,
+            binary=None,
+            env={},
+            reason="not installed",
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project = root / "projects" / "demo"
+            project.mkdir(parents=True)
+            outputs = root / "outputs"
+            outputs.mkdir()
+            target = root / "target.png"
+            from PIL import Image
+
+            Image.new("RGB", (1000, 800), (20, 120, 40)).save(target)
+            front = outputs / "review" / "demo" / "front.png"
+            front.parent.mkdir(parents=True)
+            front.write_text("fake")
+
+            with patch("bambu.review3d.export_build123d_project") as export, patch(
+                "bambu.review3d.sync_project_artifacts"
+            ) as sync, patch("bambu.review3d.detect_freecad", return_value=freecad), patch(
+                "bambu.review3d.render_blender_previews"
+            ) as render, patch("bambu.review3d.build_visual_contact_sheet") as contact:
+                export.return_value = {
+                    "project_slug": "demo",
+                    "step": str(outputs / "demo.step"),
+                    "stl": str(outputs / "demo.stl"),
+                    "bounding_box_mm": [10.0, 20.0, 30.0],
+                    "fits_a1_mini": True,
+                }
+                sync.return_value = {"artifacts": []}
+                render.return_value = {"available": True, "paths": [str(front)]}
+                contact.return_value = {"path": str(outputs / "review" / "demo" / "visual-contact-sheet.png")}
+
+                report = review_project_3d(project, outputs_root=outputs, target_image=target)
+
+        contact.assert_called_once()
+        self.assertIn("front", contact.call_args.kwargs["target_images"])
+        self.assertEqual(report["visual_contact_sheet"]["path"], str(outputs / "review" / "demo" / "visual-contact-sheet.png"))
 
 
 if __name__ == "__main__":

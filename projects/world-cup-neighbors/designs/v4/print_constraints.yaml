@@ -1,0 +1,26 @@
+printer:
+  model: Bambu Lab A1 mini
+  nozzle_mm: 0.4
+  filament: single_green_pla
+  bed: textured_pei
+envelope_mm:
+  x: 180
+  y: 180
+  z: 180
+target_model:
+  base_size_mm: {x: 125, y: 70, z: 12}
+  max_height_mm: 70
+minimum_features_mm:
+  raised_detail: 1.2
+  engraved_line_width: 1.0
+  glasses_frame: 1.2
+  net_bar: 2.0
+  net_opening: 5.0
+  free_standing_limb: 3.0
+support_strategy:
+  goal: minimize_supports
+  avoid:
+    - floating_fingers
+    - loose_props
+    - thin_horns_or_flags
+    - overhangs_above_45_without_support_plan

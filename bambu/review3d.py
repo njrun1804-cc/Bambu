@@ -16,6 +16,17 @@ from bambu.projects import sync_project_artifacts
 
 FREECAD_JSON_BEGIN = "FREECAD_REVIEW_JSON_BEGIN"
 FREECAD_JSON_END = "FREECAD_REVIEW_JSON_END"
+REVIEW_VIEW_ORDER = ("front", "front-angle", "dan-head", "carrie-head", "top", "low-front", "rear-angle")
+
+# Fractional crops for the ChatGPT concept sheet stored under references/ai-concepts.
+# They turn the sheet into direct target-vs-current comparisons instead of a tiny moodboard.
+DEFAULT_TARGET_CROPS = {
+    "front": (0.350, 0.075, 0.530, 0.472),
+    "front-angle": (0.530, 0.075, 0.705, 0.472),
+    "dan-head": (0.710, 0.075, 0.815, 0.260),
+    "carrie-head": (0.710, 0.270, 0.815, 0.472),
+    "top": (0.820, 0.075, 0.985, 0.472),
+}
 
 
 @dataclass(frozen=True)
@@ -145,17 +156,133 @@ cam.data.type = 'ORTHO'
 def look_at(target):
     direction = Vector(target) - Vector(cam.location)
     cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
-def render(name, loc, scale):
+def render(name, loc, scale, target=(0, 0, 32)):
     cam.location = loc
     cam.data.ortho_scale = scale
-    look_at((0, 0, 32))
+    look_at(target)
     bpy.context.scene.render.filepath = {str(output_dir)!r} + '/' + name + '.png'
     bpy.ops.render.render(write_still=True)
 render('front', (0, -220, 48), 138)
 render('front-angle', (120, -190, 75), 145)
 render('rear-angle', (-120, 190, 75), 145)
+render('top', (0, 0, 260), 132, target=(0, 0, 0))
+render('dan-head', (-22, -125, 62), 38, target=(-18, -10, 52))
+render('carrie-head', (24, -125, 58), 38, target=(19, -10, 49))
+render('low-front', (0, -210, 26), 132, target=(0, -8, 36))
 """
     return [blender, "--background", "--python-expr", script]
+
+
+def build_visual_contact_sheet(
+    *,
+    target_images: dict[str, Path],
+    current_images: dict[str, Path],
+    output_path: Path,
+    title: str,
+) -> dict[str, Any]:
+    """Build a simple target-vs-current review sheet from rendered PNGs."""
+
+    from PIL import Image, ImageDraw, ImageFont
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    cell_w = 420
+    cell_h = 280
+    margin = 24
+    title_h = 64
+    label_h = 28
+    rows = max(len(target_images), len(current_images), 1)
+    width = margin * 3 + cell_w * 2
+    height = title_h + margin + rows * (cell_h + label_h + margin)
+    sheet = Image.new("RGB", (width, height), (246, 245, 239))
+    draw = ImageDraw.Draw(sheet)
+    try:
+        title_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial Bold.ttf", 26)
+        label_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 17)
+    except OSError:
+        title_font = ImageFont.load_default()
+        label_font = ImageFont.load_default()
+
+    draw.text((margin, 20), title, fill=(24, 52, 28), font=title_font)
+    draw.text((margin, title_h), "TARGET", fill=(45, 80, 45), font=label_font)
+    draw.text((margin * 2 + cell_w, title_h), "CURRENT CAD", fill=(45, 80, 45), font=label_font)
+
+    labels = [name for name in REVIEW_VIEW_ORDER if name in target_images or name in current_images]
+    labels.extend(name for name in target_images if name not in labels)
+    labels.extend(name for name in current_images if name not in labels)
+    rows = max(len(labels), 1)
+    height = title_h + margin + rows * (cell_h + label_h + margin)
+    sheet = Image.new("RGB", (width, height), (246, 245, 239))
+    draw = ImageDraw.Draw(sheet)
+    draw.text((margin, 20), title, fill=(24, 52, 28), font=title_font)
+    draw.text((margin, title_h), "TARGET", fill=(45, 80, 45), font=label_font)
+    draw.text((margin * 2 + cell_w, title_h), "CURRENT CAD", fill=(45, 80, 45), font=label_font)
+
+    for idx, label in enumerate(labels):
+        y = title_h + margin + idx * (cell_h + label_h + margin)
+        if label in target_images:
+            _paste_labeled_image(sheet, draw, (label, target_images[label]), margin, y, cell_w, cell_h, label_font)
+        if label in current_images:
+            _paste_labeled_image(
+                sheet, draw, (label, current_images[label]), margin * 2 + cell_w, y, cell_w, cell_h, label_font
+            )
+
+    sheet.save(output_path)
+    return {"path": str(output_path), "width": width, "height": height, "rows": rows}
+
+
+def build_target_review_crops(
+    target_image: Path,
+    output_dir: Path,
+    *,
+    crop_regions: dict[str, tuple[float, float, float, float]] | None = None,
+) -> dict[str, Path]:
+    """Crop a design-sheet target into review views aligned with Blender cameras."""
+
+    from PIL import Image
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    crops = crop_regions or DEFAULT_TARGET_CROPS
+    results: dict[str, Path] = {}
+    with Image.open(target_image).convert("RGB") as image:
+        width, height = image.size
+        for name, region in crops.items():
+            left, top, right, bottom = region
+            box = (
+                max(0, round(left * width)),
+                max(0, round(top * height)),
+                min(width, round(right * width)),
+                min(height, round(bottom * height)),
+            )
+            if box[2] <= box[0] or box[3] <= box[1]:
+                continue
+            path = output_dir / f"{name}.png"
+            image.crop(box).save(path)
+            results[name] = path
+    return results
+
+
+def _paste_labeled_image(
+    sheet: Any,
+    draw: Any,
+    item: tuple[str, Path],
+    x: int,
+    y: int,
+    cell_w: int,
+    cell_h: int,
+    font: Any,
+) -> None:
+    from PIL import Image
+
+    label, path = item
+    with Image.open(path).convert("RGB") as image:
+        image.thumbnail((cell_w, cell_h))
+        bg = Image.new("RGB", (cell_w, cell_h), (226, 228, 218))
+        px = (cell_w - image.width) // 2
+        py = (cell_h - image.height) // 2
+        bg.paste(image, (px, py))
+        sheet.paste(bg, (x, y))
+    draw.rectangle((x, y, x + cell_w, y + cell_h), outline=(160, 166, 150), width=1)
+    draw.text((x, y + cell_h + 6), label, fill=(35, 45, 35), font=font)
 
 
 def render_blender_previews(stl: Path, output_dir: Path, *, blender: str | None = None) -> dict[str, Any]:
@@ -184,17 +311,36 @@ def review_project_3d(
     render: bool = True,
     source_file: Path | None = None,
     output_slug: str | None = None,
+    target_image: Path | None = None,
 ) -> dict[str, Any]:
     """Export, inspect, render, and summarize a project without printer contact."""
 
     project = Path(project_path)
     export = export_build123d_project(project, output_dir=outputs_root, source_file=source_file, output_slug=output_slug)
-    artifacts = sync_project_artifacts(project, outputs_root=outputs_root)
+    if source_file is None and output_slug is None:
+        artifacts = sync_project_artifacts(project, outputs_root=outputs_root)
+    else:
+        artifacts = {"artifacts": []}
     step = Path(export["step"])
     stl = Path(export["stl"])
     review_dir = outputs_root / "review" / export["project_slug"]
     freecad_report = inspect_step_with_freecad(step, review_dir / "freecad_review.json")
     blender_report = render_blender_previews(stl, review_dir) if render else {"available": False, "paths": []}
+    contact_sheet: dict[str, Any] | None = None
+    if target_image is not None and blender_report.get("paths"):
+        current_images = {
+            Path(path).stem: Path(path)
+            for path in blender_report["paths"]
+            if Path(path).exists() and Path(path).suffix.lower() == ".png"
+        }
+        if current_images:
+            target_images = build_target_review_crops(target_image, review_dir / "target-crops")
+            contact_sheet = build_visual_contact_sheet(
+                target_images=target_images or {"target concept sheet": target_image},
+                current_images=current_images,
+                output_path=review_dir / "visual-contact-sheet.png",
+                title=f"{export['project_slug']} target vs current CAD",
+            )
     return {
         "project": export["project_slug"],
         "step": str(step),
@@ -203,6 +349,7 @@ def review_project_3d(
         "fits_a1_mini": export["fits_a1_mini"],
         "freecad": freecad_report,
         "blender": blender_report,
+        "visual_contact_sheet": contact_sheet,
         "artifact_count": len(artifacts.get("artifacts", [])),
         "printer_contact": False,
         "manual_boundary": "No printer contact. Review CAD, previews, slicer settings, and supports manually.",

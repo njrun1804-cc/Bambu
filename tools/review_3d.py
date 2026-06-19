@@ -16,6 +16,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--outputs-root", type=Path, default=Path("outputs"))
     parser.add_argument("--source-file", type=Path, default=None, help="Optional build123d source file override.")
     parser.add_argument("--output-slug", default=None, help="Optional output artifact slug override.")
+    parser.add_argument("--target-image", type=Path, default=None, help="Optional target concept image for visual contact sheet.")
     parser.add_argument("--no-render", action="store_true", help="Skip Blender preview rendering.")
     parser.add_argument("--json", type=Path, default=None, help="Optional report JSON path.")
     args = parser.parse_args(argv)
@@ -26,6 +27,7 @@ def main(argv: list[str] | None = None) -> int:
         render=not args.no_render,
         source_file=args.source_file,
         output_slug=args.output_slug,
+        target_image=args.target_image,
     )
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
@@ -63,6 +65,8 @@ def print_summary(report: dict) -> None:
     print("----------------")
     for path in blender.get("paths", []):
         print(f"- {path}")
+    if report.get("visual_contact_sheet"):
+        print(f"- contact sheet: {report['visual_contact_sheet']['path']}")
     print()
     print(report["manual_boundary"])
 

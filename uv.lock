@@ -58,6 +58,7 @@ source = { editable = "." }
 dependencies = [
     { name = "build123d" },
     { name = "mcp" },
+    { name = "pillow" },
     { name = "pyyaml" },
 ]
 
@@ -65,6 +66,7 @@ dependencies = [
 requires-dist = [
     { name = "build123d", specifier = ">=0.10.0" },
     { name = "mcp", specifier = ">=1.12.4" },
+    { name = "pillow", specifier = ">=10.0.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
 ]
 

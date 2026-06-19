@@ -1,0 +1,20 @@
+required_views:
+  - front
+  - front-angle
+  - top
+  - dan-head
+  - carrie-head
+  - low-front
+minimum_scores:
+  same_ballpark: 7
+  face_readability: 7
+  toy_style: 7
+  print_safety: 6
+hard_gates:
+  - contact_sheet_must_compare_target_crops_to_current_views
+  - no_slicer_or_printer_until_visual_gate_passes
+  - all_outputs_are_review_artifacts_until_explicit_print_approval
+review_outputs:
+  directory: outputs/review/world-cup-neighbors-v4
+  report: outputs/review/world-cup-neighbors-v4/review-report.json
+  contact_sheet: outputs/review/world-cup-neighbors-v4/visual-contact-sheet.png

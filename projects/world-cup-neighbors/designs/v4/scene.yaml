@@ -1,0 +1,29 @@
+design_id: world-cup-neighbors-v4
+title: Brazil Watch Party - Dan and Carrie
+revision: v4
+generation:
+  visual_source_of_truth: blender
+  cad_role: mechanical_validation_only
+  output_slug: world-cup-neighbors-v4
+  strategy: smooth_chibi_mesh_scene_before_cad_validation
+  final_material: single_green_pla
+safety:
+  printer_contact_allowed: false
+  slicer_contact_allowed: false
+  reason: v4 candidates must pass visual and mesh review before Bambu Studio or printer work
+scene:
+  base_size_mm: {x: 125, y: 70, z: 12}
+  max_height_mm: 70
+  theme: brazil_watch_party
+  must_include:
+    - dan
+    - carrie
+    - brazil_jersey_cues
+    - soccer_ball
+    - goal_backdrop
+    - raised_names
+  visual_language:
+    - rounded_toy_caricature
+    - large_readable_heads
+    - raised_single_color_features
+    - no_minecraft_robot_blocks

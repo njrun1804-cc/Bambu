@@ -1,0 +1,55 @@
+people:
+  - id: dan
+    display_name: Dan
+    target_height_mm: 58
+    head:
+      width_mm: 24
+      height_mm: 24
+      roundness: high
+      head_to_total_ratio: 0.41
+    hair:
+      style: short_side_part_swept
+      mass: raised_cap_with_swept_ridges
+      ridge_count: 7
+    face:
+      glasses: true
+      glasses_frame_mm: 1.3
+      brow_relief_mm: 1.0
+      nose_projection_mm: 1.5
+      cheek_radius_mm: 2.6
+      smile_relief_mm: 1.0
+    body:
+      torso_width_mm: 18
+      torso_height_mm: 20
+      jersey_mark: number_10
+      pose: one_arm_raised_one_hand_on_hip
+    silhouette:
+      shoulders: narrower_than_carrie
+      shoes: chunky
+  - id: carrie
+    display_name: Carrie
+    target_height_mm: 54
+    head:
+      width_mm: 24
+      height_mm: 23
+      roundness: high
+      head_to_total_ratio: 0.43
+    hair:
+      style: rounded_bob_side_part
+      mass: smooth_bob_cap_with_side_lobes
+      ridge_count: 9
+    face:
+      glasses: true
+      glasses_frame_mm: 1.3
+      brow_relief_mm: 1.0
+      nose_projection_mm: 1.4
+      cheek_radius_mm: 3.0
+      smile_relief_mm: 1.0
+    body:
+      torso_width_mm: 23
+      torso_height_mm: 18
+      jersey_mark: heart
+      pose: one_arm_raised_one_hand_on_hip
+    silhouette:
+      shoulders: rounder_than_dan
+      shoes: chunky
