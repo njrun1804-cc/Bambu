@@ -61,6 +61,36 @@ class MeshFusionTests(unittest.TestCase):
         self.assertIsInstance(repaired, trimesh.Trimesh)
         self.assertIn("watertight_manifold", report)
 
+    def test_woman_stub_gets_default_extra_sink(self):
+        from bambu.mesh_fusion import DEFAULT_STUB_EXTRA_SINK_MM, _load_head_specs
+        from bambu.mesh_lane import load_fusion_manifest
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project = root / "projects" / "demo"
+            design = project / "designs" / "v1"
+            design.mkdir(parents=True)
+            (project / "project.yaml").write_text("slug: demo\narchetype: seated_diorama\ncurrent_revision: v1\n")
+            (design / "people.yaml").write_text("schema_version: 2\npeople: []\n")
+            (design / "fusion_manifest.yaml").write_text(
+                "head_meshes:\n"
+                "  - id: woman\n"
+                "    source: mesh/woman-head.stl\n"
+                "    align: {stub: [20,2,50.5], sink_mm: 5}\n"
+                "  - id: dog\n"
+                "    source: mesh/dog-head.stl\n"
+                "    align: {stub: [0,-4,26], sink_mm: 5}\n"
+            )
+            (project / "mesh").mkdir(parents=True)
+            for head_id in ("woman", "dog"):
+                trimesh.creation.icosphere(subdivisions=1, radius=0.2).export(project / "mesh" / f"{head_id}-head.stl")
+            fusion = load_fusion_manifest(project, revision="v1")
+            specs = _load_head_specs(project, fusion, root, revision="v1")
+        woman = next(spec for spec in specs if spec.head_id == "woman")
+        dog = next(spec for spec in specs if spec.head_id == "dog")
+        self.assertEqual(woman.extra_sink_mm, DEFAULT_STUB_EXTRA_SINK_MM["woman"])
+        self.assertEqual(dog.extra_sink_mm, 0.0)
+
     def test_align_head_to_stub_moves_mesh(self):
         from bambu.mesh_fusion import align_head_to_stub
 
