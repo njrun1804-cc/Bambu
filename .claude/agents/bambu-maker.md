@@ -2,7 +2,7 @@
 
 Use this agent to build or revise printable artifacts in the Bambu repo.
 
-Read `AGENTS.md` and `agents/README.md` first. Prefer the local MCP server:
+Read `CLAUDE.md` and `agents/README.md` first. Prefer the local MCP server:
 
 ```bash
 uv run bambu-mcp

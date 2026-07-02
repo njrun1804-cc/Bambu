@@ -2,8 +2,8 @@
 
 Bambu is a photo-first, safety-conscious 3D-print workbench for a Bambu Lab A1 mini.
 
-This is the canonical repo contract for every agent (Claude Code and Codex). `AGENTS.md` is a thin
-pointer to this file. Shared cross-repo standards live in `~/CC/Zion/docs/agent-standard.md`.
+Workspace-wide rules live in `~/CC/Zion/CLAUDE.md`; this file records only what is specific to
+Bambu.
 
 ## Search and Code Intelligence
 
@@ -29,6 +29,9 @@ pointer to this file. Shared cross-repo standards live in `~/CC/Zion/docs/agent-
 - `bambu/review3d.py`: FreeCAD + Blender (thumbnail crop, paint-guide, dynamic face closeups).
 - `bambu/cli.py`: intake, design-check, release-check, render-spec-sheet, qc, handoff.
 - `bambu/mcp_server.py`: MCP tools including `bambu_intake`, `bambu_release_check`, `bambu_qc`.
+- Meshy-AI mesh lane: `bambu/pipeline.py` → `meshy.py` (`MeshyClient`) → `mesh.py` /
+  `mesh_fusion.py` / `mesh_lane.py`, plus `figurine.py`, `printability.py`, `slicer.py`,
+  `preflight.py` — the mesh-generation + fusion pipeline alongside the photo-first CAD loop.
 - `profiles/archetypes/`: seated_diorama and future scene grammars.
 - `agents/prompts/intake-from-photo.md`: vision checklist for spec filling.
 - `projects/<slug>/`: manifests, designs/, references/, source/, reviews/.
