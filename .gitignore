@@ -34,6 +34,3 @@ outputs/*
 *.gcode
 *.gcode.3mf
 *.png
-
-# graphify structural graph — regenerable, substrate for /find
-graphify-out/

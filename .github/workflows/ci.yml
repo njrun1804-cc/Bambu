@@ -14,5 +14,9 @@ jobs:
           python-version: "3.11"
       - name: Install package
         run: python3 -m pip install -e .
+      - name: Install ruff
+        run: python3 -m pip install ruff
+      - name: Lint
+        run: ruff check bambu tools tests
       - name: Run tests
         run: python3 -m unittest discover -s tests -v
