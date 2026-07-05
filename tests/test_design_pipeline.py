@@ -3,7 +3,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 ARCHIVE = "projects/_archive/world-cup-neighbors"
 
 
@@ -23,8 +22,13 @@ class DesignPipelineTests(unittest.TestCase):
         self.assertIn("FreeCAD", report["required_review_tools"])
         self.assertIn("Blender", report["required_review_tools"])
         self.assertIn("Bambu Studio", report["manual_review_tools"])
-        self.assertIn("generate build123d components from designs/v3/*.yaml", report["next_agent_actions"])
-        concept_sheet = Path(spec["project_path"]) / spec["files"]["design"]["reference_inputs"]["concept_sheet"]["path"]
+        self.assertIn(
+            "generate build123d components from designs/v3/*.yaml", report["next_agent_actions"]
+        )
+        concept_sheet = (
+            Path(spec["project_path"])
+            / spec["files"]["design"]["reference_inputs"]["concept_sheet"]["path"]
+        )
         self.assertTrue(concept_sheet.exists())
 
     def test_design_validation_reports_missing_agentic_gates(self):
@@ -40,13 +44,16 @@ class DesignPipelineTests(unittest.TestCase):
 
         self.assertFalse(report["ok"])
         self.assertIn("design.intent is required", report["errors"])
-        self.assertIn("print_constraints.printer.model must be Bambu Lab A1 mini", report["errors"])
+        self.assertIn(
+            "print_constraints.printer.model must be Bambu Lab A1 mini", report["errors"]
+        )
         self.assertIn("face_closeup", " ".join(report["errors"]))
 
     def test_design_check_cli_prints_agent_next_actions_and_json(self):
-        from bambu.cli import main
         import io
         import json
+
+        from bambu.cli import main
 
         with tempfile.TemporaryDirectory() as tmp:
             json_path = Path(tmp) / "report.json"

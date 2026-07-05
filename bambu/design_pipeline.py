@@ -7,7 +7,6 @@ from typing import Any
 
 import yaml
 
-
 SPEC_FILES = {
     "design": "design.yaml",
     "people": "people.yaml",
@@ -140,15 +139,25 @@ def validate_design_spec(spec: dict[str, Any]) -> dict[str, Any]:
     scene_props = design.get("scene", {}).get("props", []) + design.get("must_preserve", [])
     scene_text = " ".join(str(x) for x in scene_props).lower()
     for element in required_elements:
-        if element.get("required") and element.get("id") not in scene_text and element.get("label", "").lower() not in scene_text:
+        if (
+            element.get("required")
+            and element.get("id") not in scene_text
+            and element.get("label", "").lower() not in scene_text
+        ):
             label = element.get("label", element.get("id", ""))
             if not _scene_has_element(design, element.get("id", "")):
                 errors.append(f"archetype {archetype} requires scene element: {label}")
 
     required_views = visual.get("required_views", [])
-    if "face_closeup" not in required_views and not any(v.startswith("face_closeup_") for v in required_views):
-        errors.append("visual_acceptance.required_views must include face_closeup or face_closeup_<id>")
-    if visual.get("thumbnail_check", {}).get("enabled") and not visual["thumbnail_check"].get("size_px"):
+    if "face_closeup" not in required_views and not any(
+        v.startswith("face_closeup_") for v in required_views
+    ):
+        errors.append(
+            "visual_acceptance.required_views must include face_closeup or face_closeup_<id>"
+        )
+    if visual.get("thumbnail_check", {}).get("enabled") and not visual["thumbnail_check"].get(
+        "size_px"
+    ):
         errors.append("visual_acceptance.thumbnail_check.size_px is required when enabled")
 
     if not visual.get("human_review_questions"):
@@ -158,9 +167,13 @@ def validate_design_spec(spec: dict[str, Any]) -> dict[str, Any]:
     concept = design.get("reference_inputs", {}).get("concept_sheet", {})
     if lane == "hybrid":
         if not concept.get("path"):
-            errors.append("design.reference_inputs.concept_sheet.path is required when lane is hybrid")
+            errors.append(
+                "design.reference_inputs.concept_sheet.path is required when lane is hybrid"
+            )
         if not concept.get("role"):
-            warnings.append("design.reference_inputs.concept_sheet.role should describe visual acceptance target")
+            warnings.append(
+                "design.reference_inputs.concept_sheet.role should describe visual acceptance target"
+            )
 
     review_tools = build_plan.get("review_tools", {})
     agent_tools = review_tools.get("agent", [])
@@ -189,7 +202,9 @@ def validate_design_spec(spec: dict[str, Any]) -> dict[str, Any]:
         "subjects_specified": bool(person_ids),
         "archetype_declared": archetype_declared,
         "visual_review_specified": bool(required_views),
-        "agent_review_tools_specified": all(tool in agent_tools for tool in ("FreeCAD", "Blender")),
+        "agent_review_tools_specified": all(
+            tool in agent_tools for tool in ("FreeCAD", "Blender")
+        ),
         "forbidden_traps_documented": bool(forbidden_traps),
         "concept_sheet_hybrid": not (lane == "hybrid" and not concept.get("path")),
     }
@@ -205,7 +220,9 @@ def validate_design_spec(spec: dict[str, Any]) -> dict[str, Any]:
         "design": {
             "id": design.get("design_id", ""),
             "source_of_truth": source_of_truth,
-            "direction": design.get("intent", {}).get("design_direction", design.get("intent", "")),
+            "direction": design.get("intent", {}).get(
+                "design_direction", design.get("intent", "")
+            ),
             "archetype": archetype,
         },
         "printer": {
@@ -266,8 +283,10 @@ def render_spec_sheet(project_path: Path | str, *, revision: str = "v1") -> str:
         lines.extend(["## Reference photo", "", f"`{photo}` (local, gitignored)", ""])
     lines.extend(["## Subjects", ""])
     for person in people.get("people", []):
-        lines.append(f"- **{person.get('name', person.get('id'))}** ({person.get('id', '')}): "
-                     f"{', '.join(person.get('likeness_cues', []))}")
+        lines.append(
+            f"- **{person.get('name', person.get('id'))}** ({person.get('id', '')}): "
+            f"{', '.join(person.get('likeness_cues', []))}"
+        )
     lines.extend(["", "## Must preserve", ""])
     for item in design.get("must_preserve", []):
         lines.append(f"- {item}")

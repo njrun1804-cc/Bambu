@@ -23,7 +23,6 @@ from bambu.mesh_lane import (
 )
 from bambu.projects import load_project, sync_project_artifacts
 
-
 DEFAULT_HEAD_ROTATIONS: dict[str, tuple[float, float, float]] = {
     # Meshy image-to-3d exports are Y-up; seated_diorama faces -Y.
     "woman": (0.0, 0.0, 180.0),
@@ -105,8 +104,12 @@ def fuse_hybrid_project(
     else:
         mesh_report = _mesh_report(fused_mesh)
 
-    fused_rel = fusion.get("fused_artifact", f"outputs/{manifest['slug']}-{rev.split('.')[0]}-fused.stl")
-    fused_path = output_path or _resolve_project_path(project, repo_root, fused_rel, outputs_root=outputs_root)
+    fused_rel = fusion.get(
+        "fused_artifact", f"outputs/{manifest['slug']}-{rev.split('.')[0]}-fused.stl"
+    )
+    fused_path = output_path or _resolve_project_path(
+        project, repo_root, fused_rel, outputs_root=outputs_root
+    )
     fused_path.parent.mkdir(parents=True, exist_ok=True)
     fused_mesh.export(fused_path)
 
@@ -233,9 +236,11 @@ def cap_oriented_head(
     fraction = min(max(fraction, 0.2), 0.9)
     oriented = mesh.copy()
     oriented.merge_vertices()
-    for angle, axis in zip(rotation_deg, ([1, 0, 0], [0, 1, 0], [0, 0, 1])):
+    for angle, axis in zip(rotation_deg, ([1, 0, 0], [0, 1, 0], [0, 0, 1]), strict=True):
         if angle:
-            oriented.apply_transform(trimesh.transformations.rotation_matrix(np.radians(angle), axis))
+            oriented.apply_transform(
+                trimesh.transformations.rotation_matrix(np.radians(angle), axis)
+            )
     cutoff = float(np.percentile(oriented.vertices[:, 2], (1.0 - fraction) * 100.0))
     return trim_mesh_below_z(oriented, cutoff)
 
@@ -255,7 +260,8 @@ def cull_small_components(
         keep = [
             part
             for part in parts
-            if len(part.faces) >= min_faces and max(float(axis) for axis in part.extents) >= min_extent_mm
+            if len(part.faces) >= min_faces
+            and max(float(axis) for axis in part.extents) >= min_extent_mm
         ]
         if not keep:
             keep = [max(parts, key=lambda part: len(part.faces))]
@@ -300,9 +306,11 @@ def align_head_to_stub(
 
     aligned = mesh.copy()
     aligned.merge_vertices()
-    for angle, axis in zip(rotation_deg, ([1, 0, 0], [0, 1, 0], [0, 0, 1])):
+    for angle, axis in zip(rotation_deg, ([1, 0, 0], [0, 1, 0], [0, 0, 1]), strict=True):
         if angle:
-            aligned.apply_transform(trimesh.transformations.rotation_matrix(np.radians(angle), axis))
+            aligned.apply_transform(
+                trimesh.transformations.rotation_matrix(np.radians(angle), axis)
+            )
     horizontal = max(float(aligned.extents[0]), float(aligned.extents[1]), 1e-6)
     scale_factor = (target_width_mm * scale) / horizontal
     if target_height_mm:
@@ -332,7 +340,9 @@ def merge_meshes(body: trimesh.Trimesh, heads: list[trimesh.Trimesh]) -> trimesh
     return combined
 
 
-def repair_head_mesh(mesh: trimesh.Trimesh, *, merge_pct: float = DEFAULT_HEAD_REPAIR_MERGE_PCT) -> trimesh.Trimesh:
+def repair_head_mesh(
+    mesh: trimesh.Trimesh, *, merge_pct: float = DEFAULT_HEAD_REPAIR_MERGE_PCT
+) -> trimesh.Trimesh:
     """Pre-repair Meshy head exports before alignment."""
 
     try:
@@ -381,7 +391,9 @@ def prune_blocking_island_bumps(
             island_report = analyze_islands(stl_path)
         if island_report.get("ok"):
             return repaired
-        seeds = [entry["seed"] for entry in island_report.get("islands", []) if entry.get("blocking")]
+        seeds = [
+            entry["seed"] for entry in island_report.get("islands", []) if entry.get("blocking")
+        ]
         if not seeds:
             return repaired
 
@@ -411,7 +423,10 @@ def _pymeshlab_stub_repair(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
 
     import pymeshlab
 
-    with _temporary_stl(mesh, label="input") as stl_path, _temporary_stl(mesh, label="repaired") as out_path:
+    with (
+        _temporary_stl(mesh, label="input") as stl_path,
+        _temporary_stl(mesh, label="repaired") as out_path,
+    ):
         ms = pymeshlab.MeshSet()
         ms.load_new_mesh(str(stl_path))
         ms.apply_filter("meshing_remove_duplicate_vertices")
@@ -430,19 +445,27 @@ def _pymeshlab_stub_repair(mesh: trimesh.Trimesh) -> trimesh.Trimesh:
 def _pymeshlab_repair(mesh: trimesh.Trimesh, *, merge_pct: float) -> trimesh.Trimesh:
     import pymeshlab
 
-    with _temporary_stl(mesh, label="input") as stl_path, _temporary_stl(mesh, label="repaired") as out_path:
+    with (
+        _temporary_stl(mesh, label="input") as stl_path,
+        _temporary_stl(mesh, label="repaired") as out_path,
+    ):
         ms = pymeshlab.MeshSet()
         ms.load_new_mesh(str(stl_path))
         ms.apply_filter("meshing_remove_duplicate_vertices")
         ms.apply_filter("meshing_remove_duplicate_faces")
         ms.apply_filter("meshing_remove_unreferenced_vertices")
-        ms.apply_filter("meshing_merge_close_vertices", threshold=pymeshlab.PercentageValue(merge_pct))
+        ms.apply_filter(
+            "meshing_merge_close_vertices", threshold=pymeshlab.PercentageValue(merge_pct)
+        )
         ms.apply_filter("meshing_repair_non_manifold_edges", method=0)
         ms.apply_filter("meshing_repair_non_manifold_vertices")
         ms.apply_filter("meshing_close_holes", maxholesize=500)
         for filter_name, kwargs in (
             ("meshing_remove_connected_component_by_face_number", {"mincomponentsize": 20}),
-            ("meshing_remove_connected_component_by_diameter", {"mincomponentdiag": pymeshlab.PercentageValue(1.0)}),
+            (
+                "meshing_remove_connected_component_by_diameter",
+                {"mincomponentdiag": pymeshlab.PercentageValue(1.0)},
+            ),
         ):
             try:
                 ms.apply_filter(filter_name, **kwargs)
@@ -467,7 +490,11 @@ def _load_head_specs(
     if project_manifest.get("archetype") == "seated_diorama":
         stub_defaults = seated_diorama_stub_centers()
 
-    metrics = {m["id"]: m for m in character_metrics(load_specs(project, revision=revision)) if m.get("id")}
+    metrics = {
+        m["id"]: m
+        for m in character_metrics(load_specs(project, revision=revision))
+        if m.get("id")
+    }
     specs: list[HeadFusionSpec] = []
     for entry in fusion.get("head_meshes", []):
         head_id = str(entry.get("id", "subject"))
@@ -492,11 +519,19 @@ def _load_head_specs(
             target_width = float(align["target_width_mm"])
         else:
             target_width = base_width * scale
-        target_height = float(align["target_height_mm"]) if "target_height_mm" in align else (
-            float(base_height) * scale if base_height else None
+        target_height = (
+            float(align["target_height_mm"])
+            if "target_height_mm" in align
+            else (float(base_height) * scale if base_height else None)
         )
-        cap_fraction = float(align["cap_fraction"]) if "cap_fraction" in align else DEFAULT_HEAD_CAP_FRACTION.get(head_id)
-        extra_sink = float(align.get("extra_sink_mm", DEFAULT_STUB_EXTRA_SINK_MM.get(head_id, 0.0)))
+        cap_fraction = (
+            float(align["cap_fraction"])
+            if "cap_fraction" in align
+            else DEFAULT_HEAD_CAP_FRACTION.get(head_id)
+        )
+        extra_sink = float(
+            align.get("extra_sink_mm", DEFAULT_STUB_EXTRA_SINK_MM.get(head_id, 0.0))
+        )
         specs.append(
             HeadFusionSpec(
                 head_id=head_id,

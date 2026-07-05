@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-import subprocess
 from typing import Any
 
 
@@ -61,7 +61,9 @@ def build_slice_plan(request: SliceRequest) -> SlicePlan:
     process_profile = request.process_profile
     filament_profile = request.filament_profile
     if not (machine_profile or process_profile or filament_profile):
-        if profiles := resolve_a1_mini_profiles(tool, material=request.material, nozzle_mm=request.nozzle_mm):
+        if profiles := resolve_a1_mini_profiles(
+            tool, material=request.material, nozzle_mm=request.nozzle_mm
+        ):
             machine_profile = profiles.machine
             process_profile = profiles.process
             filament_profile = profiles.filament

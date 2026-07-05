@@ -140,9 +140,7 @@ class IntakeTests(unittest.TestCase):
 
             with patch("bambu.intake.FORBIDDEN_DEFAULT_REFERENCES", (forbidden,)):
                 with self.assertRaises(ValueError) as error:
-                    resolve_photo_path(
-                        renamed, slug="best-buds-chair", archetype="seated_diorama"
-                    )
+                    resolve_photo_path(renamed, slug="best-buds-chair", archetype="seated_diorama")
             self.assertIn("byte-identical", str(error.exception))
 
     def test_resolve_photo_path_uses_explicit_existing_path(self):
@@ -172,7 +170,9 @@ class IntakeTests(unittest.TestCase):
             source = Path(tmp) / "3BE8F09C-8766-4010-8E7C-D2A5155E8940_1_105_c.jpg"
             Image.new("RGB", (2, 2), color="red").save(source, "JPEG")
             dest = persist_reference_photo(source, project, slug="best-buds-chair")
-            self.assertEqual(dest, project / "photos" / "reference" / "best-buds-chair-reference.jpg")
+            self.assertEqual(
+                dest, project / "photos" / "reference" / "best-buds-chair-reference.jpg"
+            )
             self.assertTrue(dest.exists())
             self.assertGreater(dest.stat().st_size, 0)
 

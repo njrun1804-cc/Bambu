@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import importlib.util
+import warnings
 from pathlib import Path
 from types import ModuleType
 from typing import Any
-import warnings
 
 from bambu.projects import load_project, sync_project_artifacts
 
@@ -130,4 +130,4 @@ def _bounding_box_mm(model: Any) -> list[float]:
 
 
 def _fits_volume(bounding_box_mm: list[float], build_volume_mm: list[float]) -> bool:
-    return all(size <= limit for size, limit in zip(bounding_box_mm, build_volume_mm))
+    return all(size <= limit for size, limit in zip(bounding_box_mm, build_volume_mm, strict=True))

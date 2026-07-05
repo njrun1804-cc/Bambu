@@ -1,5 +1,5 @@
-import unittest
 import runpy
+import unittest
 from pathlib import Path
 
 import yaml
@@ -22,7 +22,9 @@ class SeatedDioramaTests(unittest.TestCase):
     def test_dog_closeup_targets_current_dog_head(self):
         params = runpy.run_path("projects/best-buds-chair/source/v1/model.py")["PARAMS"]
 
-        views = yaml.safe_load(Path("projects/best-buds-chair/designs/v1/views.yaml").read_text())["views"]
+        views = yaml.safe_load(Path("projects/best-buds-chair/designs/v1/views.yaml").read_text())[
+            "views"
+        ]
         dog_view = next(view for view in views if view["name"] == "face_closeup_dog")
         target = dog_view["target"]
         dog = params["dog"]

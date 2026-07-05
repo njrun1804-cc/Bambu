@@ -14,9 +14,14 @@ from bambu.context import context_view, rules_view
 from bambu.design_pipeline import load_design_spec, render_spec_sheet, validate_design_spec
 from bambu.figurine import generate_scad
 from bambu.handoff import inspect_print_handoff
-from bambu.preflight import detect_tools, next_steps, serialize_report
 from bambu.pipeline import build_world_cup_prototype
-from bambu.projects import create_project, project_view, record_print_result, sync_project_artifacts
+from bambu.preflight import detect_tools, next_steps, serialize_report
+from bambu.projects import (
+    create_project,
+    project_view,
+    record_print_result,
+    sync_project_artifacts,
+)
 from bambu.slicer import SliceRequest, build_slice_plan
 
 
@@ -204,7 +209,9 @@ def bambu_meshy_balance() -> dict[str, Any]:
     return MeshyClient.from_env().balance()
 
 
-def bambu_meshy_analyze(project: str, subject: str | None = None, task_id: str | None = None) -> dict[str, Any]:
+def bambu_meshy_analyze(
+    project: str, subject: str | None = None, task_id: str | None = None
+) -> dict[str, Any]:
     from bambu.meshy import meshy_analyze
 
     return meshy_analyze(Path(project), subject=subject, input_task_id=task_id)

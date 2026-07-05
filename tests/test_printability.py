@@ -30,7 +30,9 @@ CONTEXT = {
 }
 
 
-def write_sliced_3mf(path: Path, *, support_used: str = "false", filament_type: str = "PLA") -> None:
+def write_sliced_3mf(
+    path: Path, *, support_used: str = "false", filament_type: str = "PLA"
+) -> None:
     slice_info = f"""<?xml version="1.0" encoding="UTF-8"?>
 <config>
   <plate>

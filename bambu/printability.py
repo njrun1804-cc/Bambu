@@ -22,7 +22,6 @@ import yaml
 
 from bambu.mesh import analyze_overhangs
 
-
 FILAMENT_DIAMETER_MM = 1.75
 DEFAULT_CONTEXT = Path("profiles/bambu-a1-mini/context.yaml")
 
@@ -94,19 +93,26 @@ def qc_sliced_3mf(path: Path, *, context: dict[str, Any] | None = None) -> dict[
         for spool in m.get("owned_spools", [])
     }
     report["facts"]["filaments"] = [
-        {"type": f.get("type"), "color": f.get("color"), "used_m": f.get("used_m")} for f in filaments
+        {"type": f.get("type"), "color": f.get("color"), "used_m": f.get("used_m")}
+        for f in filaments
     ]
     types_ok = all(f.get("type") in owned_types for f in filaments)
     report["checks"]["filament_type_owned"] = types_ok
     if not types_ok:
-        failures.append(f"sliced filament types {[f.get('type') for f in filaments]} not all in inventory {sorted(owned_types)}")
+        failures.append(
+            f"sliced filament types {[f.get('type') for f in filaments]} not all in inventory {sorted(owned_types)}"
+        )
     report["facts"]["owned_spools"] = sorted(f"{c} {t}" for t, c in inventory)
 
     # Human-facing estimates.
     seconds = int(metadata.get("prediction", "0") or 0)
     used_m = sum(float(f.get("used_m", "0") or 0) for f in filaments)
     density = next(
-        (m.get("density_g_cm3", 1.24) for m in context.get("materials", []) if m.get("filament_type") == (filaments[0].get("type") if filaments else "PLA")),
+        (
+            m.get("density_g_cm3", 1.24)
+            for m in context.get("materials", [])
+            if m.get("filament_type") == (filaments[0].get("type") if filaments else "PLA")
+        ),
         1.24,
     )
     cross_section_mm2 = math.pi * (FILAMENT_DIAMETER_MM / 2.0) ** 2
@@ -166,7 +172,9 @@ def qc_report_lines(
         lines.append(f"- {name}: {'ok' if ok else 'FAIL'}")
     facts = slice_report.get("facts", {})
     if facts:
-        lines.append(f"print time: {facts.get('print_time')} | filament: {facts.get('filament_m')} m (~{facts.get('filament_g_estimate')} g)")
+        lines.append(
+            f"print time: {facts.get('print_time')} | filament: {facts.get('filament_m')} m (~{facts.get('filament_g_estimate')} g)"
+        )
         lines.append(f"filaments in file: {facts.get('filaments')}")
         lines.append(f"owned spools: {facts.get('owned_spools')}")
     for failure in slice_report.get("failures", []):

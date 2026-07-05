@@ -84,7 +84,11 @@ def inspect_mesh(stl_path: Path | str) -> dict[str, Any]:
     slicers discard them."""
 
     if not Path(stl_path).exists():
-        return {"available": False, "reason": f"STL not found: {stl_path}", "watertight_manifold": False}
+        return {
+            "available": False,
+            "reason": f"STL not found: {stl_path}",
+            "watertight_manifold": False,
+        }
 
     mesh = load_binary_stl(stl_path)
     edges: dict[tuple[int, int], int] = defaultdict(int)
@@ -159,7 +163,9 @@ def analyze_overhangs(
 
     patches: dict[int, dict[str, Any]] = {}
     for area, tri, centroid, is_bridge in flagged:
-        patch = patches.setdefault(find(tri[0]), {"area": 0.0, "steep": 0.0, "bridge": 0.0, "centroid": centroid})
+        patch = patches.setdefault(
+            find(tri[0]), {"area": 0.0, "steep": 0.0, "bridge": 0.0, "centroid": centroid}
+        )
         patch["area"] += area
         patch["bridge" if is_bridge else "steep"] += area
 
@@ -326,7 +332,10 @@ def analyze_islands(
             tri = mesh.triangles[f_idx]
             if all(v in component for v in tri):
                 continue
-            if min(z(i) for i in tri) > z0 + slab_mm or max(z(i) for i in tri) < z0 - support_band_mm:
+            if (
+                min(z(i) for i in tri) > z0 + slab_mm
+                or max(z(i) for i in tri) < z0 - support_band_mm
+            ):
                 continue
             tri_xy = [(mesh.points[i][0], mesh.points[i][1]) for i in tri]
             if any(_dist2d_point_triangle(p, tri_xy) <= support_radius_mm for p in seed_xy):

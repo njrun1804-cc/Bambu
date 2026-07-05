@@ -1,6 +1,6 @@
+import tempfile
 import unittest
 from pathlib import Path
-import tempfile
 
 
 class SlicerTests(unittest.TestCase):
@@ -107,7 +107,9 @@ class SlicerTests(unittest.TestCase):
             for path in (machine, process, filament):
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("{}")
-            profiles = resolve_a1_mini_profiles("bambu-studio", material="Bambu PETG HF", profile_root=root)
+            profiles = resolve_a1_mini_profiles(
+                "bambu-studio", material="Bambu PETG HF", profile_root=root
+            )
 
             plan = build_slice_plan(
                 SliceRequest(

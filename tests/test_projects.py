@@ -52,7 +52,9 @@ class ProjectTests(unittest.TestCase):
             root = Path(tmp)
             artifact = root / "part.stl"
             artifact.write_text("solid test")
-            result = write_artifact_manifest(root / "artifacts.json", project_slug="part", revision="v001", paths=[artifact])
+            result = write_artifact_manifest(
+                root / "artifacts.json", project_slug="part", revision="v001", paths=[artifact]
+            )
             data = json.loads((root / "artifacts.json").read_text())
 
         self.assertEqual(result["project_slug"], "part")

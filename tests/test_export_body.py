@@ -8,14 +8,20 @@ class ExportBodyTests(unittest.TestCase):
     def test_body_model_exports_single_solid(self):
         from bambu.cad import load_build123d_model
 
-        body = load_build123d_model("projects/best-buds-chair/source/v1/model.py", model_symbol="body_model")
+        body = load_build123d_model(
+            "projects/best-buds-chair/source/v1/model.py", model_symbol="body_model"
+        )
         self.assertEqual(len(body.solids()), 1)
 
     def test_full_model_and_body_model_differ_in_height(self):
         from bambu.cad import load_build123d_model
 
-        full = load_build123d_model("projects/best-buds-chair/source/v1/model.py", model_symbol="model")
-        body = load_build123d_model("projects/best-buds-chair/source/v1/model.py", model_symbol="body_model")
+        full = load_build123d_model(
+            "projects/best-buds-chair/source/v1/model.py", model_symbol="model"
+        )
+        body = load_build123d_model(
+            "projects/best-buds-chair/source/v1/model.py", model_symbol="body_model"
+        )
         self.assertLess(float(body.bounding_box().size.Z), float(full.bounding_box().size.Z))
 
     def test_build_seated_diorama_include_heads_flag(self):
@@ -40,9 +46,11 @@ class ExportBodyTests(unittest.TestCase):
                 "from bambu.cad.archetypes.seated_diorama import build_seated_diorama\n"
                 "body_model = build_seated_diorama({'include_heads': False})\n"
             )
-            with patch("bambu.cad._build123d_exporters") as exporters, patch(
-                "bambu.cad.sync_project_artifacts", return_value={"artifacts": []}
-            ), patch("bambu.cad.load_build123d_model") as load:
+            with (
+                patch("bambu.cad._build123d_exporters") as exporters,
+                patch("bambu.cad.sync_project_artifacts", return_value={"artifacts": []}),
+                patch("bambu.cad.load_build123d_model") as load,
+            ):
                 exporters.return_value = (lambda *a, **k: None, lambda *a, **k: None)
                 from bambu.cad.archetypes.seated_diorama import build_seated_diorama
 

@@ -33,7 +33,10 @@ class McpToolTests(unittest.TestCase):
             "bambu_studio": type(
                 "Tool",
                 (),
-                {"available": True, "path": "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio"},
+                {
+                    "available": True,
+                    "path": "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio",
+                },
             )(),
             "orcaslicer": type("Tool", (), {"available": False, "path": None})(),
         }
@@ -41,7 +44,9 @@ class McpToolTests(unittest.TestCase):
             result = bambu_slice_plan("outputs/a.stl", "outputs/a.gcode.3mf")
 
         self.assertEqual(result["tool"], "bambu-studio")
-        self.assertEqual(result["command"][0], "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio")
+        self.assertEqual(
+            result["command"][0], "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio"
+        )
         self.assertIn("manual approval", " ".join(result["checklist"]).lower())
 
     def test_mcp_build_world_cup_prototype_delegates_pipeline(self):
@@ -176,7 +181,9 @@ class McpToolTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["printer"]["model"], "Bambu Lab A1 mini")
         self.assertFalse(result["printer_contact_allowed"])
-        self.assertIn("generate build123d components from designs/v3/*.yaml", result["next_agent_actions"])
+        self.assertIn(
+            "generate build123d components from designs/v3/*.yaml", result["next_agent_actions"]
+        )
 
 
 if __name__ == "__main__":

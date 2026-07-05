@@ -10,7 +10,6 @@ import yaml
 
 from bambu.preflight import detect_tools, serialize_report
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONTEXT_PATH = REPO_ROOT / "profiles" / "bambu-a1-mini" / "context.yaml"
 
@@ -61,8 +60,17 @@ def rules_view() -> dict[str, Any]:
         "gates": {
             "design": ["valid_manifest", "lane_chosen", "material_selected", "privacy_declared"],
             "export": ["source_exists", "artifact_hash_recorded", "fits_build_volume"],
-            "slicer": ["profile_named", "material_profile_named", "plate_side_named", "manual_review"],
-            "print_feedback": ["outcome_recorded", "failure_mode_classified", "next_revision_proposed"],
+            "slicer": [
+                "profile_named",
+                "material_profile_named",
+                "plate_side_named",
+                "manual_review",
+            ],
+            "print_feedback": [
+                "outcome_recorded",
+                "failure_mode_classified",
+                "next_revision_proposed",
+            ],
         },
     }
 

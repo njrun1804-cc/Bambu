@@ -4,7 +4,6 @@ from pathlib import Path
 
 import yaml
 
-
 ARCHIVE = Path("projects/_archive/world-cup-neighbors")
 
 

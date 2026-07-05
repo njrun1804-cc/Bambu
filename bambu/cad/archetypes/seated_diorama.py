@@ -35,7 +35,14 @@ DEFAULT_PARAMS = {
     "base": {"x": 118.0, "y": 65.0, "z": 10.0, "corner_r": 9.0},
     "nameplate": {"text": "BEST BUDS", "size": 7.5, "proud": 1.6},
     "chair": {"cx": 14.0, "cy": 8.0, "seat_w": 36.0, "seat_d": 30.0},
-    "woman": {"cx": 20.0, "cy": 2.0, "head_w": 20.0, "head_h": 21.0, "torso_w": 17.0, "torso_h": 14.0},
+    "woman": {
+        "cx": 20.0,
+        "cy": 2.0,
+        "head_w": 20.0,
+        "head_h": 21.0,
+        "torso_w": 17.0,
+        "torso_h": 14.0,
+    },
     "dog": {"cx": 0.0, "cy": -4.0, "head_r": 12.5},
 }
 
@@ -65,7 +72,9 @@ def make_seated_woman(
     head_c = torso_top + head_h / 2.0 - 2.0
     face_y = cy - head_r
 
-    adds.append(Pos(cx, cy, torso_bottom) * rounded_block(torso_w, 14.0, torso_h, 4.0, top_fillet=2.0))
+    adds.append(
+        Pos(cx, cy, torso_bottom) * rounded_block(torso_w, 14.0, torso_h, 4.0, top_fillet=2.0)
+    )
     adds.append(Pos(cx, cy - 1.0, seat_z - 4.0) * rounded_block(torso_w + 2.0, 16.0, 6.0, 4.0))
     adds.append(Pos(cx, cy, torso_top) * Cylinder(3.8, 4.5))
 
@@ -75,7 +84,9 @@ def make_seated_woman(
 
         jaw_y, jaw_z, jaw_r = cy + 0.5, head_c - 7.0, 7.9
         add_jaw_sphere(adds, fx=cx, jaw_y=jaw_y, jaw_z=jaw_z, jaw_r=jaw_r)
-        add_woman_bob_hair(adds, fx=cx, fy=cy, head_c=head_c, head_r=head_r, head_h=head_h, torso_top=torso_top)
+        add_woman_bob_hair(
+            adds, fx=cx, fy=cy, head_c=head_c, head_r=head_r, head_h=head_h, torso_top=torso_top
+        )
         crown = head_c + head_h / 2.0 + 1.0
         add_hair_grooves(engraves, fx=cx, fy=cy, crown_z=crown, band_count=4)
 
@@ -90,7 +101,9 @@ def make_seated_woman(
         add_smile_engrave(engraves, fx=cx, smile_z=jaw_z, face_y=face_y, jaw_front=jaw_front)
         add_cheek_pads(adds, fx=cx, smile_z=jaw_z, face_y=face_y, cheek_r=2.2)
     else:
-        adds.append(head_fusion_stub(cx=cx, cy=cy, cz=head_c, radius=head_r * 0.55, height=head_h * 0.45))
+        adds.append(
+            head_fusion_stub(cx=cx, cy=cy, cz=head_c, radius=head_r * 0.55, height=head_h * 0.45)
+        )
 
     # Arm reaching toward dog (fused capsule + hand on dog head).
     shoulder = (cx - 8.0, cy + 2.0, torso_top - 2.0)
@@ -102,7 +115,9 @@ def make_seated_woman(
     return subtract_engraves(body, engraves) if engraves else body
 
 
-def head_stub_centers(params: dict[str, Any] | None = None) -> dict[str, tuple[float, float, float]]:
+def head_stub_centers(
+    params: dict[str, Any] | None = None,
+) -> dict[str, tuple[float, float, float]]:
     """Return neck-stub centers for hybrid-lane Meshy head fusion."""
 
     p = {**DEFAULT_PARAMS, **(params or {})}

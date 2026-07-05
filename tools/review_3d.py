@@ -4,21 +4,27 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from bambu.review3d import review_project_3d
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Review a generated 3D project without printer contact.")
+    parser = argparse.ArgumentParser(
+        description="Review a generated 3D project without printer contact."
+    )
     parser.add_argument("project", type=Path, help="Project directory containing project.yaml.")
     parser.add_argument("--outputs-root", type=Path, default=Path("outputs"))
     parser.add_argument("--no-render", action="store_true", help="Skip Blender preview rendering.")
     parser.add_argument("--json", type=Path, default=None, help="Optional report JSON path.")
-    parser.add_argument("--source-file", type=Path, default=None, help="Alternate build123d source file.")
+    parser.add_argument(
+        "--source-file", type=Path, default=None, help="Alternate build123d source file."
+    )
     parser.add_argument("--output-slug", default=None, help="Alternate output artifact name.")
-    parser.add_argument("--views", type=Path, default=None, help="YAML file with Blender review views.")
+    parser.add_argument(
+        "--views", type=Path, default=None, help="YAML file with Blender review views."
+    )
     args = parser.parse_args(argv)
 
     views = None
@@ -84,7 +90,9 @@ def print_summary(report: dict) -> None:
         print(f"facets: {mesh.get('facets')}")
         print(f"open edges: {mesh.get('open_edges')}")
         print(f"non-manifold edges: {mesh.get('non_manifold_edges')}")
-        print(f"degenerate facets: {mesh.get('degenerate_facets')} (tolerated; slicers discard zero-area triangles)")
+        print(
+            f"degenerate facets: {mesh.get('degenerate_facets')} (tolerated; slicers discard zero-area triangles)"
+        )
         print(f"watertight manifold: {'yes' if mesh.get('watertight_manifold') else 'no'}")
     overhangs = report.get("overhangs", {})
     islands = report.get("islands", {})

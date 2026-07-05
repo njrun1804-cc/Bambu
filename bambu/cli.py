@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import shlex
 import sys
+from pathlib import Path
 
 from bambu.design_pipeline import load_design_spec, render_spec_sheet, validate_design_spec
 from bambu.figurine import Figurine, Scene, generate_scad
@@ -88,9 +88,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Create a structured agent project workspace from a plain-English print idea.",
     )
     create.add_argument("intent", help="Plain-English model intent.")
-    create.add_argument("--root", type=Path, default=Path("projects"), help="Project workspace root.")
-    create.add_argument("--slug", help="Optional project slug. Defaults to a slug from the intent.")
-    create.add_argument("--lane", default="build123d", choices=["build123d", "openscad", "figurine", "hybrid"])
+    create.add_argument(
+        "--root", type=Path, default=Path("projects"), help="Project workspace root."
+    )
+    create.add_argument(
+        "--slug", help="Optional project slug. Defaults to a slug from the intent."
+    )
+    create.add_argument(
+        "--lane", default="build123d", choices=["build123d", "openscad", "figurine", "hybrid"]
+    )
     create.add_argument("--privacy", default="private")
     create.add_argument("--material", default="Bambu PLA Basic")
     create.add_argument("--plate-side", default="deferred")
@@ -100,7 +106,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Record physical print feedback for a project revision.",
     )
     result.add_argument("project", type=Path, help="Project directory containing project.yaml.")
-    result.add_argument("--outcome", required=True, choices=["not_printed", "success", "partial_success", "failed"])
+    result.add_argument(
+        "--outcome", required=True, choices=["not_printed", "success", "partial_success", "failed"]
+    )
     result.add_argument("--failure-mode", default="")
     result.add_argument("--notes", default="")
     result.add_argument("--next-revision", default="")
@@ -118,16 +126,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     export.add_argument("project", type=Path, help="Project directory containing project.yaml.")
     export.add_argument("--output-dir", type=Path, default=Path("outputs"))
-    export.add_argument("--source-file", type=Path, default=None, help="Alternate build123d source file.")
+    export.add_argument(
+        "--source-file", type=Path, default=None, help="Alternate build123d source file."
+    )
     export.add_argument("--output-slug", default=None, help="Alternate output artifact name.")
 
     export_body = subparsers.add_parser(
         "export-body",
         help="Export build123d body scaffold (head stubs) to STEP and STL for mesh fusion.",
     )
-    export_body.add_argument("project", type=Path, help="Project directory containing project.yaml.")
+    export_body.add_argument(
+        "project", type=Path, help="Project directory containing project.yaml."
+    )
     export_body.add_argument("--output-dir", type=Path, default=Path("outputs"))
-    export_body.add_argument("--source-file", type=Path, default=None, help="Alternate build123d source file.")
+    export_body.add_argument(
+        "--source-file", type=Path, default=None, help="Alternate build123d source file."
+    )
     export_body.add_argument("--output-slug", default=None, help="Alternate output artifact name.")
     export_body.add_argument("--revision", default=None, help="Design revision for output slug.")
 
@@ -136,20 +150,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fuse build123d body STL with Meshy head STLs into a printable fused STL.",
     )
     fuse_mesh.add_argument("project", type=Path, help="Project directory containing project.yaml.")
-    fuse_mesh.add_argument("--revision", default=None, help="Design revision under designs/<revision>.")
+    fuse_mesh.add_argument(
+        "--revision", default=None, help="Design revision under designs/<revision>."
+    )
     fuse_mesh.add_argument("--body-stl", type=Path, default=None, help="Override body STL path.")
-    fuse_mesh.add_argument("--output", type=Path, default=None, help="Override fused STL output path.")
-    fuse_mesh.add_argument("--outputs-root", type=Path, default=Path("outputs"), help="Directory for body/fused artifacts.")
+    fuse_mesh.add_argument(
+        "--output", type=Path, default=None, help="Override fused STL output path."
+    )
+    fuse_mesh.add_argument(
+        "--outputs-root",
+        type=Path,
+        default=Path("outputs"),
+        help="Directory for body/fused artifacts.",
+    )
     fuse_mesh.add_argument("--no-repair", action="store_true", help="Skip pymeshlab repair pass.")
-    fuse_mesh.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
+    fuse_mesh.add_argument(
+        "--json", type=Path, default=None, help="Optional path to write report JSON."
+    )
 
     design_check = subparsers.add_parser(
         "design-check",
         help="Validate structured agentic design specs before CAD generation.",
     )
-    design_check.add_argument("project", type=Path, help="Project directory containing project.yaml.")
-    design_check.add_argument("--revision", default="v3", help="Design revision under designs/<revision>.")
-    design_check.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
+    design_check.add_argument(
+        "project", type=Path, help="Project directory containing project.yaml."
+    )
+    design_check.add_argument(
+        "--revision", default="v3", help="Design revision under designs/<revision>."
+    )
+    design_check.add_argument(
+        "--json", type=Path, default=None, help="Optional path to write report JSON."
+    )
 
     qc = subparsers.add_parser(
         "qc",
@@ -166,45 +197,80 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run every release gate in one pass: design-check, export, FreeCAD, mesh, overhangs, islands, renders.",
     )
     release.add_argument("project", type=Path, help="Project directory containing project.yaml.")
-    release.add_argument("--revision", default=None, help="Design revision to gate under designs/<revision>.")
-    release.add_argument("--source-file", type=Path, default=None, help="Alternate build123d source file.")
+    release.add_argument(
+        "--revision", default=None, help="Design revision to gate under designs/<revision>."
+    )
+    release.add_argument(
+        "--source-file", type=Path, default=None, help="Alternate build123d source file."
+    )
     release.add_argument("--output-slug", default=None, help="Alternate output artifact name.")
-    release.add_argument("--views", type=Path, default=None, help="YAML file with Blender review views.")
-    release.add_argument("--no-render", action="store_true", help="Skip Blender preview rendering.")
+    release.add_argument(
+        "--views", type=Path, default=None, help="YAML file with Blender review views."
+    )
+    release.add_argument(
+        "--no-render", action="store_true", help="Skip Blender preview rendering."
+    )
     release.add_argument("--outputs-root", type=Path, default=Path("outputs"))
-    release.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
-    release.add_argument("--stl", type=Path, default=None, help="Fused STL artifact (skips build123d export).")
-    release.add_argument("--skip-export", action="store_true", help="Use existing outputs instead of re-exporting.")
+    release.add_argument(
+        "--json", type=Path, default=None, help="Optional path to write report JSON."
+    )
+    release.add_argument(
+        "--stl", type=Path, default=None, help="Fused STL artifact (skips build123d export)."
+    )
+    release.add_argument(
+        "--skip-export", action="store_true", help="Use existing outputs instead of re-exporting."
+    )
     release.add_argument("--skip-freecad", action="store_true", help="Skip FreeCAD STEP gate.")
-    release.add_argument("--body-step", type=Path, default=None, help="Optional body STEP for FreeCAD when reviewing fused STL.")
+    release.add_argument(
+        "--body-step",
+        type=Path,
+        default=None,
+        help="Optional body STEP for FreeCAD when reviewing fused STL.",
+    )
 
     review_mesh = subparsers.add_parser(
         "review-mesh",
         help="Quick mesh gates and Blender renders on an existing STL.",
     )
     review_mesh.add_argument("stl", type=Path, help="STL path to review.")
-    review_mesh.add_argument("--project", type=Path, default=None, help="Project for views and thumbnail spec.")
+    review_mesh.add_argument(
+        "--project", type=Path, default=None, help="Project for views and thumbnail spec."
+    )
     review_mesh.add_argument("--revision", default=None, help="Design revision for views.")
-    review_mesh.add_argument("--body-step", type=Path, default=None, help="Optional body STEP for FreeCAD review.")
-    review_mesh.add_argument("--no-render", action="store_true", help="Skip Blender preview rendering.")
+    review_mesh.add_argument(
+        "--body-step", type=Path, default=None, help="Optional body STEP for FreeCAD review."
+    )
+    review_mesh.add_argument(
+        "--no-render", action="store_true", help="Skip Blender preview rendering."
+    )
     review_mesh.add_argument("--outputs-root", type=Path, default=Path("outputs"))
-    review_mesh.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
+    review_mesh.add_argument(
+        "--json", type=Path, default=None, help="Optional path to write report JSON."
+    )
 
     mesh_intake_cmd = subparsers.add_parser(
         "mesh-intake",
         help="Register a head mesh in projects/<slug>/mesh/ with provenance.",
     )
     mesh_intake_cmd.add_argument("project", type=Path, help="Project directory.")
-    mesh_intake_cmd.add_argument("--file", type=Path, required=True, help="STL file to copy into mesh/.")
+    mesh_intake_cmd.add_argument(
+        "--file", type=Path, required=True, help="STL file to copy into mesh/."
+    )
     mesh_intake_cmd.add_argument("--role", required=True, help="Artifact role, e.g. head_woman.")
-    mesh_intake_cmd.add_argument("--meshy-task-id", default="", help="Optional Meshy task id for provenance.")
+    mesh_intake_cmd.add_argument(
+        "--meshy-task-id", default="", help="Optional Meshy task id for provenance."
+    )
 
     meshy = subparsers.add_parser("meshy", help="Meshy Pro integration for hybrid lane likeness.")
     meshy_sub = meshy.add_subparsers(dest="meshy_command", required=True)
 
-    meshy_concept = meshy_sub.add_parser("concept", help="Figure prototype or text-to-image concept sheet.")
+    meshy_concept = meshy_sub.add_parser(
+        "concept", help="Figure prototype or text-to-image concept sheet."
+    )
     meshy_concept.add_argument("project", type=Path, help="Project directory.")
-    meshy_concept.add_argument("--photo", type=Path, default=None, help="Override reference photo path.")
+    meshy_concept.add_argument(
+        "--photo", type=Path, default=None, help="Override reference photo path."
+    )
     meshy_concept.add_argument(
         "--mode",
         choices=["auto", "photo", "prompt"],
@@ -219,7 +285,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     meshy_head = meshy_sub.add_parser("head", help="Image-to-3d head mesh from cropped photo.")
     meshy_head.add_argument("project", type=Path, help="Project directory.")
-    meshy_head.add_argument("--subject", required=True, choices=["woman", "dog"], help="Head subject id.")
+    meshy_head.add_argument(
+        "--subject", required=True, choices=["woman", "dog"], help="Head subject id."
+    )
     meshy_head.add_argument("--crop", type=Path, default=None, help="Override crop image path.")
     meshy_head.add_argument(
         "--force-reference",
@@ -265,7 +333,9 @@ def build_parser() -> argparse.ArgumentParser:
     meshy_analyze.add_argument("--subject", default=None, help="Subject id for provenance lookup.")
     meshy_analyze.add_argument("--task-id", default=None, help="Meshy task id to analyze.")
 
-    meshy_repair = meshy_sub.add_parser("repair", help="Repair printability on a prior Meshy task.")
+    meshy_repair = meshy_sub.add_parser(
+        "repair", help="Repair printability on a prior Meshy task."
+    )
     meshy_repair.add_argument("project", type=Path, help="Project directory.")
     meshy_repair.add_argument("--task-id", default=None, help="Input image-to-3d task id.")
     meshy_repair.add_argument("--subject", default=None, choices=["woman", "dog"])
@@ -275,7 +345,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Download repaired STL into mesh/<subject>-head.stl (default when --subject is set).",
     )
 
-    meshy_remesh = meshy_sub.add_parser("remesh", help="Remesh a prior Meshy task to lower polycount.")
+    meshy_remesh = meshy_sub.add_parser(
+        "remesh", help="Remesh a prior Meshy task to lower polycount."
+    )
     meshy_remesh.add_argument("project", type=Path, help="Project directory.")
     meshy_remesh.add_argument("--task-id", default=None, help="Input task id.")
     meshy_remesh.add_argument("--subject", default=None, choices=["woman", "dog"])
@@ -318,7 +390,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     spec_sheet.add_argument("project", type=Path, help="Project directory.")
     spec_sheet.add_argument("--revision", default="v1", help="Design revision.")
-    spec_sheet.add_argument("--output", type=Path, default=None, help="Optional output markdown path.")
+    spec_sheet.add_argument(
+        "--output", type=Path, default=None, help="Optional output markdown path."
+    )
 
     pipeline = subparsers.add_parser(
         "pipeline",
@@ -329,18 +403,40 @@ def build_parser() -> argparse.ArgumentParser:
         "run",
         help="Run the full pipeline: design-check, hybrid mesh steps, release-check, headless slice, qc, handoff.",
     )
-    pipeline_run.add_argument("project", type=Path, help="Project directory containing project.yaml.")
-    pipeline_run.add_argument("--revision", default=None, help="Design revision under designs/<revision>.")
-    pipeline_run.add_argument("--slicer", default="bambu-studio", choices=["bambu-studio", "orcaslicer", "orca"])
+    pipeline_run.add_argument(
+        "project", type=Path, help="Project directory containing project.yaml."
+    )
+    pipeline_run.add_argument(
+        "--revision", default=None, help="Design revision under designs/<revision>."
+    )
+    pipeline_run.add_argument(
+        "--slicer", default="bambu-studio", choices=["bambu-studio", "orcaslicer", "orca"]
+    )
     pipeline_run.add_argument("--outputs-root", type=Path, default=Path("outputs"))
-    pipeline_run.add_argument("--skip-meshy", action="store_true", help="Skip Meshy concept/head generation.")
-    pipeline_run.add_argument("--force-meshy", action="store_true", help="Re-run Meshy even when artifacts exist.")
-    pipeline_run.add_argument("--force-fuse", action="store_true", help="Re-export body and re-run fuse-mesh.")
-    pipeline_run.add_argument("--force-slice", action="store_true", help="Re-slice even when .gcode.3mf exists.")
-    pipeline_run.add_argument("--no-render", action="store_true", help="Skip Blender preview rendering.")
-    pipeline_run.add_argument("--no-repair", action="store_true", help="Skip pymeshlab repair during fuse-mesh.")
-    pipeline_run.add_argument("--json", type=Path, default=None, help="Optional path to write report JSON.")
-    pipeline_run.add_argument("--slice-timeout", type=int, default=600, help="Slicer CLI timeout in seconds.")
+    pipeline_run.add_argument(
+        "--skip-meshy", action="store_true", help="Skip Meshy concept/head generation."
+    )
+    pipeline_run.add_argument(
+        "--force-meshy", action="store_true", help="Re-run Meshy even when artifacts exist."
+    )
+    pipeline_run.add_argument(
+        "--force-fuse", action="store_true", help="Re-export body and re-run fuse-mesh."
+    )
+    pipeline_run.add_argument(
+        "--force-slice", action="store_true", help="Re-slice even when .gcode.3mf exists."
+    )
+    pipeline_run.add_argument(
+        "--no-render", action="store_true", help="Skip Blender preview rendering."
+    )
+    pipeline_run.add_argument(
+        "--no-repair", action="store_true", help="Skip pymeshlab repair during fuse-mesh."
+    )
+    pipeline_run.add_argument(
+        "--json", type=Path, default=None, help="Optional path to write report JSON."
+    )
+    pipeline_run.add_argument(
+        "--slice-timeout", type=int, default=600, help="Slicer CLI timeout in seconds."
+    )
 
     slice_cmd = subparsers.add_parser(
         "slice",
@@ -348,9 +444,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     slice_cmd.add_argument("model", type=Path, help="Input STL path.")
     slice_cmd.add_argument("--output", type=Path, default=None, help="Output .gcode.3mf path.")
-    slice_cmd.add_argument("--slicer", default="bambu-studio", choices=["bambu-studio", "orcaslicer", "orca"])
+    slice_cmd.add_argument(
+        "--slicer", default="bambu-studio", choices=["bambu-studio", "orcaslicer", "orca"]
+    )
     slice_cmd.add_argument("--material", default="Bambu PLA Basic", help="Filament profile name.")
-    slice_cmd.add_argument("--timeout", type=int, default=600, help="Slicer CLI timeout in seconds.")
+    slice_cmd.add_argument(
+        "--timeout", type=int, default=600, help="Slicer CLI timeout in seconds."
+    )
     return parser
 
 
@@ -464,8 +564,12 @@ def _handoff(file: Path) -> int:
     print("Manual boundary")
     print("---------------")
     print("Install/enable the Bambu Network plug-in in Bambu Studio if the setup wizard asks.")
-    print("On the Device tab, confirm the physical printer is online and is the Bambu Lab A1 mini.")
-    print("Do not start the physical print unattended; inspect plate, filament, supports, and first layer first.")
+    print(
+        "On the Device tab, confirm the physical printer is online and is the Bambu Lab A1 mini."
+    )
+    print(
+        "Do not start the physical print unattended; inspect plate, filament, supports, and first layer first."
+    )
     return 0 if report.ready_for_manual_review else 1
 
 
@@ -534,7 +638,9 @@ def _record_print_result(args: argparse.Namespace) -> int:
         notes=args.notes,
         next_revision=args.next_revision,
     )
-    print(f"Recorded print result: {result['project_slug']} {result['revision']} {result['outcome']}")
+    print(
+        f"Recorded print result: {result['project_slug']} {result['revision']} {result['outcome']}"
+    )
     print("Next: revise source from the recorded physical feedback before exporting again.")
     return 0
 
@@ -648,7 +754,12 @@ if __name__ == "__main__":
 
 def _qc(args: argparse.Namespace) -> int:
     from bambu.mesh import analyze_islands
-    from bambu.printability import analyze_stl_overhangs, load_printer_context, qc_report_lines, qc_sliced_3mf
+    from bambu.printability import (
+        analyze_stl_overhangs,
+        load_printer_context,
+        qc_report_lines,
+        qc_sliced_3mf,
+    )
 
     context = load_printer_context(args.context)
     stl_report = (
@@ -661,7 +772,10 @@ def _qc(args: argparse.Namespace) -> int:
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(
-            json.dumps({"stl": stl_report, "islands": island_report, "sliced": slice_report}, indent=2) + "\n"
+            json.dumps(
+                {"stl": stl_report, "islands": island_report, "sliced": slice_report}, indent=2
+            )
+            + "\n"
         )
     for line in qc_report_lines(stl_report, slice_report, island_report):
         print(line)
@@ -868,7 +982,9 @@ def _meshy(args: argparse.Namespace) -> int:
         if args.meshy_command == "remesh":
             client = MeshyClient.from_env()
             if args.task_id:
-                task = client.remesh(input_task_id=args.task_id, target_polycount=args.target_polycount)
+                task = client.remesh(
+                    input_task_id=args.task_id, target_polycount=args.target_polycount
+                )
                 print(json.dumps(task, indent=2))
             elif args.subject:
                 import yaml
@@ -877,7 +993,9 @@ def _meshy(args: argparse.Namespace) -> int:
                 prov = yaml.safe_load(prov_path.read_text()) if prov_path.exists() else {}
                 task_id = (prov.get("heads", {}).get(args.subject) or {}).get("task_id")
                 if not task_id:
-                    raise MeshyError(f"No task_id for subject {args.subject} in mesh/provenance.yaml")
+                    raise MeshyError(
+                        f"No task_id for subject {args.subject} in mesh/provenance.yaml"
+                    )
                 task = client.remesh(input_task_id=task_id, target_polycount=args.target_polycount)
                 print(json.dumps(task, indent=2))
             else:
@@ -910,7 +1028,13 @@ def _release_check(args: argparse.Namespace) -> int:
     if args.revision:
         spec = load_design_spec(args.project, revision=args.revision)
         design_report = validate_design_spec(spec)
-        gates.append(("design-check", design_report["ok"], "; ".join(design_report["errors"]) or "specs valid"))
+        gates.append(
+            (
+                "design-check",
+                design_report["ok"],
+                "; ".join(design_report["errors"]) or "specs valid",
+            )
+        )
     else:
         design_report = None
 
@@ -940,9 +1064,13 @@ def _release_check(args: argparse.Namespace) -> int:
     islands = review.get("islands", {})
     blender = review.get("blender", {})
 
-    gates.append(("fits A1 mini", bool(review.get("fits_a1_mini")), str(review.get("bounding_box_mm"))))
+    gates.append(
+        ("fits A1 mini", bool(review.get("fits_a1_mini")), str(review.get("bounding_box_mm")))
+    )
     freecad_skipped = freecad.get("skipped") or args.skip_freecad or bool(args.stl)
-    freecad_ok = freecad_skipped or (freecad.get("available", False) and not freecad.get("warnings"))
+    freecad_ok = freecad_skipped or (
+        freecad.get("available", False) and not freecad.get("warnings")
+    )
     gates.append(
         (
             "FreeCAD geometry",
@@ -976,15 +1104,24 @@ def _release_check(args: argparse.Namespace) -> int:
         (
             "floating islands",
             bool(islands.get("ok")),
-            "%s blocking of %s seeds" % (islands.get("blocking_count"), islands.get("island_count")),
+            "%s blocking of %s seeds"
+            % (islands.get("blocking_count"), islands.get("island_count")),
         )
     )
     if not args.no_render:
-        gates.append(("review renders", bool(blender.get("paths")), f"{len(blender.get('paths', []))} views"))
+        gates.append(
+            (
+                "review renders",
+                bool(blender.get("paths")),
+                f"{len(blender.get('paths', []))} views",
+            )
+        )
 
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
-        args.json.write_text(json.dumps({"design": design_report, "review": review}, indent=2) + "\n")
+        args.json.write_text(
+            json.dumps({"design": design_report, "review": review}, indent=2) + "\n"
+        )
 
     print("Release check")
     print("=============")
@@ -1000,7 +1137,9 @@ def _release_check(args: argparse.Namespace) -> int:
         print(f"- {name}: {'pass' if ok else 'FAIL'} ({detail})")
     print()
     print(f"release check: {'PASS' if all_ok else 'FAIL'}")
-    print("Next: slice, then `bambu qc <sliced.gcode.3mf> --stl <model.stl>`, then `bambu handoff`.")
+    print(
+        "Next: slice, then `bambu qc <sliced.gcode.3mf> --stl <model.stl>`, then `bambu handoff`."
+    )
     print("Or run end-to-end: `uv run bambu pipeline run <project> --skip-meshy --no-render`.")
     print(review.get("manual_boundary", ""))
     return 0 if all_ok else 1

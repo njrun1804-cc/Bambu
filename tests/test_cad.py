@@ -28,7 +28,9 @@ class CadTests(unittest.TestCase):
             self.assertTrue(Path(result["stl"]).exists())
             self.assertEqual(result["bounding_box_mm"], [10.0, 20.0, 5.0])
             self.assertTrue(result["fits_a1_mini"])
-            self.assertIn("cad_step", {entry["kind"] for entry in result["artifacts"]["artifacts"]})
+            self.assertIn(
+                "cad_step", {entry["kind"] for entry in result["artifacts"]["artifacts"]}
+            )
 
     def test_export_build123d_project_rejects_missing_model_symbol(self):
         from bambu.cad import export_build123d_project

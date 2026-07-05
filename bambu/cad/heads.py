@@ -36,7 +36,11 @@ def add_glasses_ridge(
     round_frames: bool = False,
     lens_dx: float | None = None,
 ):
-    frame = open_round_glasses_frame(lens_dx=lens_dx or 4.15) if round_frames else open_rect_glasses_frame(lens_dx=lens_dx or 4.7)
+    frame = (
+        open_round_glasses_frame(lens_dx=lens_dx or 4.15)
+        if round_frames
+        else open_rect_glasses_frame(lens_dx=lens_dx or 4.7)
+    )
     adds.append(front_extrude(frame, fx, eye_z, face_y - 1.45, 7.2))
     return lens_dx or (4.15 if round_frames else 4.7)
 
@@ -137,7 +141,9 @@ def add_cheek_pads(
     cheek_r: float = 2.0,
 ):
     for sx in (-1, 1):
-        adds.append(front_extrude(Circle(cheek_r), fx + sx * 5.8, smile_z + 1.8, face_y - 0.8, 4.5))
+        adds.append(
+            front_extrude(Circle(cheek_r), fx + sx * 5.8, smile_z + 1.8, face_y - 0.8, 4.5)
+        )
 
 
 def add_trimmed_nose(adds: list, *, fx: float, face_y: float, nose_z: float):
@@ -154,4 +160,6 @@ def add_smile_engrave(
     jaw_front: float,
 ):
     lune = Circle(3.2) - Pos(0, 1.5) * Circle(3.2)
-    engraves.append(front_extrude(lune, fx, smile_z, face_y - 2.0, (jaw_front + 1.7) - (face_y - 2.0)))
+    engraves.append(
+        front_extrude(lune, fx, smile_z, face_y - 2.0, (jaw_front + 1.7) - (face_y - 2.0))
+    )

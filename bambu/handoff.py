@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
-import shlex
 from zipfile import BadZipFile, ZipFile
-
 
 REQUIRED_A1_MINI_MARKERS: tuple[str, ...] = (
     "Bambu Lab A1 mini",

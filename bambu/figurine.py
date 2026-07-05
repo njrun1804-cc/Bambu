@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import re
+from dataclasses import dataclass, field
 from textwrap import dedent
 
 
@@ -226,14 +226,24 @@ def _figure_call(figure: Figurine, x: float) -> str:
     glasses = "true" if "glasses" in accessories else "false"
     sunglasses = "true" if "sunglasses" in accessories else "false"
     profile_slug = slug(figure.profile)
-    profile = profile_slug if profile_slug != "generic" else label if label in {"tall_neighbor", "smiling_neighbor"} else "generic"
-    body_width = 16.5 if figure.body_shape == "slim" else 21.0 if figure.body_shape == "curvy" else 18.0
-    body_depth = 10.5 if figure.body_shape == "slim" else 12.4 if figure.body_shape == "curvy" else 11.0
+    profile = (
+        profile_slug
+        if profile_slug != "generic"
+        else label
+        if label in {"tall_neighbor", "smiling_neighbor"}
+        else "generic"
+    )
+    body_width = (
+        16.5 if figure.body_shape == "slim" else 21.0 if figure.body_shape == "curvy" else 18.0
+    )
+    body_depth = (
+        10.5 if figure.body_shape == "slim" else 12.4 if figure.body_shape == "curvy" else 11.0
+    )
     number_symbol = f"number_{slug(figure.jersey_number)}"
     base_contact_z = 3.9 - 0.65 * scale_factor
     return dedent(
         f"""
-        // {figure.name}: {figure.body_shape}; {figure.hair}; {', '.join(figure.accessories) or 'no accessories'}
+        // {figure.name}: {figure.body_shape}; {figure.hair}; {", ".join(figure.accessories) or "no accessories"}
         {number_symbol} = "{figure.jersey_number}";
         translate([{x:.1f}, 0, {base_contact_z:.3f}]) figurine(label="{label}", scale_factor={scale_factor:.3f}, number_text={number_symbol}, glasses={glasses}, sunglasses={sunglasses}, profile="{profile}", body_width={body_width:.1f}, body_depth={body_depth:.1f});
         """

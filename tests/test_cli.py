@@ -40,12 +40,18 @@ class CliTests(unittest.TestCase):
             "bambu_studio": type(
                 "Tool",
                 (),
-                {"available": True, "path": "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio"},
+                {
+                    "available": True,
+                    "path": "/Applications/BambuStudio.app/Contents/MacOS/BambuStudio",
+                },
             )(),
             "orcaslicer": type("Tool", (), {"available": False, "path": None})(),
         }
         output = io.StringIO()
-        with patch("sys.stdout", output), patch("bambu.cli.detect_tools", return_value=fake_report):
+        with (
+            patch("sys.stdout", output),
+            patch("bambu.cli.detect_tools", return_value=fake_report),
+        ):
             exit_code = main(
                 [
                     "slice-plan",
@@ -110,7 +116,9 @@ class CliTests(unittest.TestCase):
                 )
 
             self.assertEqual(exit_code, 0)
-            self.assertTrue((Path(tmp) / "cable-clip" / "reviews" / "001-print-feedback-v1.md").exists())
+            self.assertTrue(
+                (Path(tmp) / "cable-clip" / "reviews" / "001-print-feedback-v1.md").exists()
+            )
             self.assertIn("Recorded print result", output.getvalue())
 
     def test_sync_artifacts_command_indexes_outputs(self):

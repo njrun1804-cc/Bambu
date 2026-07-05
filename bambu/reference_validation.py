@@ -9,7 +9,6 @@ from typing import Any
 
 import yaml
 
-
 # Content hashes of the known-wrong reference photos from the original incident (marina
 # neighbors / World Cup figurines). Embedding the digests means the byte-block works in CI
 # and fresh clones where the private/ originals are absent (private/ is gitignored). Covers
@@ -216,8 +215,7 @@ def validate_reference_photo(
         )
         if missing and not intake.get("reference_photo_confirmed"):
             errors.append(
-                "Reference photo not human-confirmed for required subjects: "
-                + ", ".join(missing)
+                "Reference photo not human-confirmed for required subjects: " + ", ".join(missing)
             )
 
     ok = len(errors) == 0

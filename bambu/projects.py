@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 import json
-from pathlib import Path
 import re
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import yaml
 
 from bambu.context import context_view, rules_view
-
 
 PROJECTS_ROOT = Path("projects")
 LANES = {"build123d", "openscad", "figurine", "hybrid"}
@@ -89,7 +88,9 @@ def create_project(
     _write_yaml(project_dir / "project.yaml", manifest)
     rev = manifest["current_revision"]
     if not (project_dir / "artifacts.json").exists():
-        write_artifact_manifest(project_dir / "artifacts.json", project_slug=project_slug, revision=rev, paths=[])
+        write_artifact_manifest(
+            project_dir / "artifacts.json", project_slug=project_slug, revision=rev, paths=[]
+        )
     return manifest
 
 
@@ -135,7 +136,9 @@ def project_view(project_path: Path | str) -> dict[str, Any]:
         "validation_errors": errors,
         "artifacts": artifacts,
         "rules": rules_view(),
-        "next_safe_action": project.get("next_safe_action", "fix manifest validation errors" if errors else "review project"),
+        "next_safe_action": project.get(
+            "next_safe_action", "fix manifest validation errors" if errors else "review project"
+        ),
     }
 
 
@@ -224,7 +227,9 @@ def record_print_result(
     )
 
     project["status"] = "print_feedback"
-    project["next_safe_action"] = "revise source from print feedback" if next_revision else "review print feedback"
+    project["next_safe_action"] = (
+        "revise source from print feedback" if next_revision else "review print feedback"
+    )
     _write_yaml(manifest_path, project)
     return result
 

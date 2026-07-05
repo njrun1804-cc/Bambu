@@ -27,7 +27,11 @@ class Review3dTests(unittest.TestCase):
         from bambu.review3d import parse_freecad_json
 
         payload = {"available": True, "shape_count": 1, "solid_count": 1}
-        output = "FreeCAD banner\nFREECAD_REVIEW_JSON_BEGIN\n" + json.dumps(payload) + "\nFREECAD_REVIEW_JSON_END\n"
+        output = (
+            "FreeCAD banner\nFREECAD_REVIEW_JSON_BEGIN\n"
+            + json.dumps(payload)
+            + "\nFREECAD_REVIEW_JSON_END\n"
+        )
 
         self.assertEqual(parse_freecad_json(output), payload)
 
@@ -103,10 +107,11 @@ class Review3dTests(unittest.TestCase):
             outputs = root / "outputs"
             outputs.mkdir()
 
-            with patch("bambu.review3d.export_build123d_project") as export, patch(
-                "bambu.review3d.sync_project_artifacts"
-            ) as sync, patch("bambu.review3d.detect_freecad", return_value=freecad), patch(
-                "bambu.review3d.detect_blender", return_value=None
+            with (
+                patch("bambu.review3d.export_build123d_project") as export,
+                patch("bambu.review3d.sync_project_artifacts") as sync,
+                patch("bambu.review3d.detect_freecad", return_value=freecad),
+                patch("bambu.review3d.detect_blender", return_value=None),
             ):
                 export.return_value = {
                     "project_slug": "demo",
@@ -118,7 +123,10 @@ class Review3dTests(unittest.TestCase):
                 sync.return_value = {"artifacts": []}
                 report = review_project_3d(project, outputs_root=outputs, render=False)
 
-        self.assertEqual(report["manual_boundary"], "No printer contact. Review CAD, previews, slicer settings, and supports manually.")
+        self.assertEqual(
+            report["manual_boundary"],
+            "No printer contact. Review CAD, previews, slicer settings, and supports manually.",
+        )
         self.assertFalse(report["printer_contact"])
         self.assertEqual(report["freecad"]["available"], False)
 
@@ -141,10 +149,11 @@ class Review3dTests(unittest.TestCase):
             outputs = root / "outputs"
             outputs.mkdir()
 
-            with patch("bambu.review3d.export_build123d_project") as export, patch(
-                "bambu.review3d.sync_project_artifacts"
-            ) as sync, patch("bambu.review3d.detect_freecad", return_value=freecad), patch(
-                "bambu.review3d.detect_blender", return_value=None
+            with (
+                patch("bambu.review3d.export_build123d_project") as export,
+                patch("bambu.review3d.sync_project_artifacts") as sync,
+                patch("bambu.review3d.detect_freecad", return_value=freecad),
+                patch("bambu.review3d.detect_blender", return_value=None),
             ):
                 export.return_value = {
                     "project_slug": "demo",
@@ -158,7 +167,6 @@ class Review3dTests(unittest.TestCase):
 
         export.assert_called_once()
         self.assertEqual(export.call_args.kwargs["revision"], "v4")
-
 
     def test_skip_export_fit_gate_uses_real_bounding_box(self):
         import struct
@@ -251,7 +259,6 @@ class Review3dTests(unittest.TestCase):
 
         self.assertFalse(report["watertight_manifold"])
         self.assertIn("reason", report)
-
 
 
 if __name__ == "__main__":

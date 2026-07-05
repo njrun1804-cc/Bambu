@@ -10,7 +10,10 @@ class PreflightTests(unittest.TestCase):
         def fake_which(name):
             return f"/usr/local/bin/{name}" if name == "openscad" else None
 
-        with patch("shutil.which", side_effect=fake_which), patch.object(Path, "exists", return_value=False):
+        with (
+            patch("shutil.which", side_effect=fake_which),
+            patch.object(Path, "exists", return_value=False),
+        ):
             report = detect_tools()
 
         self.assertTrue(report["openscad"].available)
@@ -43,7 +46,10 @@ class PreflightTests(unittest.TestCase):
         def fake_exists(self):
             return str(self) == existing_bundle
 
-        with patch("shutil.which", side_effect=fake_which), patch.object(Path, "exists", fake_exists):
+        with (
+            patch("shutil.which", side_effect=fake_which),
+            patch.object(Path, "exists", fake_exists),
+        ):
             report = detect_tools()
 
         self.assertTrue(report["bambu_studio"].available)

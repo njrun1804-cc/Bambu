@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -17,7 +17,6 @@ from bambu.cad.specs import character_metrics, load_specs
 from bambu.design_pipeline import load_design_spec
 from bambu.mesh import analyze_islands, analyze_overhangs, inspect_mesh
 from bambu.projects import load_project, sync_project_artifacts
-
 
 FREECAD_JSON_BEGIN = "FREECAD_REVIEW_JSON_BEGIN"
 FREECAD_JSON_END = "FREECAD_REVIEW_JSON_END"
@@ -38,7 +37,9 @@ class FreeCADInstall:
         return [str(self.binary), "-c"]
 
 
-def detect_freecad(candidates: list[Path] | None = None, *, runtime_root: Path = Path(".freecad-runtime")) -> FreeCADInstall:
+def detect_freecad(
+    candidates: list[Path] | None = None, *, runtime_root: Path = Path(".freecad-runtime")
+) -> FreeCADInstall:
     """Detect FreeCAD.app and return a console-mode execution environment."""
 
     env_bin = os.environ.get("FREECAD_BIN")
@@ -79,7 +80,9 @@ def inspect_step_with_freecad(
         str(step_path.resolve()),
         str(output_json.resolve()),
     ]
-    completed = subprocess.run(command, check=False, text=True, capture_output=True, env=install.env)
+    completed = subprocess.run(
+        command, check=False, text=True, capture_output=True, env=install.env
+    )
     if output_json.exists():
         parsed = json.loads(output_json.read_text())
         parsed.setdefault("available", True)
@@ -313,7 +316,11 @@ def review_mesh_stl(
     overhang_report = analyze_overhangs(stl)
     island_report = analyze_islands(stl)
 
-    freecad_report: dict[str, Any] = {"available": False, "skipped": True, "reason": "fused STL path"}
+    freecad_report: dict[str, Any] = {
+        "available": False,
+        "skipped": True,
+        "reason": "fused STL path",
+    }
     if body_step and not skip_freecad:
         step = Path(body_step)
         freecad_report = inspect_step_with_freecad(step, review_dir / "freecad_body_review.json")
@@ -325,7 +332,9 @@ def review_mesh_stl(
     blender_report: dict[str, Any] = {"available": False, "paths": []}
     paint_guide_report: dict[str, Any] = {"available": False, "paths": []}
     if render:
-        blender_report = render_blender_previews(stl, review_dir, views=views, thumbnail_px=thumbnail_px)
+        blender_report = render_blender_previews(
+            stl, review_dir, views=views, thumbnail_px=thumbnail_px
+        )
         paint_guide_report = render_blender_previews(
             stl, review_dir / "paint-guide", views=views, paint_guide=True
         )
@@ -370,7 +379,7 @@ def _stl_bounding_box_mm(stl_path: Path) -> list[float]:
 
 
 def _fits_volume(bounding_box_mm: list[float], build_volume_mm: list[float]) -> bool:
-    return all(size <= limit for size, limit in zip(bounding_box_mm, build_volume_mm))
+    return all(size <= limit for size, limit in zip(bounding_box_mm, build_volume_mm, strict=True))
 
 
 def review_project_3d(

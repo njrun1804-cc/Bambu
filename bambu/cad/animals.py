@@ -4,7 +4,14 @@ from __future__ import annotations
 
 from build123d import Circle, Pos, Sphere
 
-from bambu.cad.primitives import assert_single_solid, capsule_between, front_extrude, head_fusion_stub, multifuse, subtract_engraves
+from bambu.cad.primitives import (
+    assert_single_solid,
+    capsule_between,
+    front_extrude,
+    head_fusion_stub,
+    multifuse,
+    subtract_engraves,
+)
 
 
 def make_dog_head(
@@ -40,7 +47,7 @@ def make_dog_head(
     adds.append(front_extrude(Circle(3.8), cx, cz - 2.7, face_y - 0.15, 2.4))
 
     # Tri-color mask cues: dark patches as shallow engraves (paint zones).
-    for sx, dx in ((-1, -4.0), (1, 4.0)):
+    for dx in (-4.0, 4.0):
         engraves.append(front_extrude(Circle(3.2), cx + dx, cz + 2.5, face_y - 0.2, 1.8))
     engraves.append(front_extrude(Circle(2.4), cx, cz + 4.8, face_y - 0.2, 1.6))
 
@@ -67,11 +74,15 @@ def make_dog_lap_pose(
     if include_head:
         head = make_dog_head(cx=cx, cy=cy, cz=head_cz, head_r=head_r, face_y=face_y)
     else:
-        head = head_fusion_stub(cx=cx, cy=cy, cz=head_cz, radius=head_r * 0.5, height=head_r * 0.55)
+        head = head_fusion_stub(
+            cx=cx, cy=cy, cz=head_cz, radius=head_r * 0.5, height=head_r * 0.55
+        )
     # Body and chest overlap the lower head to anchor chin and ears for printability.
     body = Pos(cx, cy + 6.0, base_z + 7.5) * Sphere(10.0)
     chest = Pos(cx, cy - 5.0, head_cz - 8.0) * Sphere(8.5)
-    tail = capsule_between((cx + 5.0, cy + 10.0, base_z + 7.0), (cx + 8.0, cy + 14.0, base_z + 3.0), 2.8)
+    tail = capsule_between(
+        (cx + 5.0, cy + 10.0, base_z + 7.0), (cx + 8.0, cy + 14.0, base_z + 3.0), 2.8
+    )
     scene = multifuse(head, body, chest, tail)
     return assert_single_solid(scene, label="dog_lap_pose")
 

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-import subprocess
 from typing import Any
 
 from bambu.cli import default_world_cup_scene, export_build123d_project
@@ -155,7 +155,9 @@ def run_project_pipeline(
     result = ProjectPipelineResult(project=slug, revision=rev, lane=lane)
 
     def record(name: str, status: str, detail: str = "", artifact: str | None = None) -> None:
-        result.steps.append(PipelineStepResult(name=name, status=status, detail=detail, artifact=artifact))
+        result.steps.append(
+            PipelineStepResult(name=name, status=status, detail=detail, artifact=artifact)
+        )
 
     spec = load_design_spec(project, revision=rev)
     design_report = validate_design_spec(spec)
@@ -181,7 +183,9 @@ def run_project_pipeline(
             else:
                 try:
                     concept = meshy_concept(project)
-                    record("meshy concept", "pass", "concept sheet generated", concept["concept_path"])
+                    record(
+                        "meshy concept", "pass", "concept sheet generated", concept["concept_path"]
+                    )
                 except MeshyError as exc:
                     record("meshy concept", "fail", str(exc))
                     return result
@@ -308,7 +312,9 @@ def run_project_pipeline(
     stl_report = analyze_stl_overhangs(printable_stl, patch_budget_mm2=opts.overhang_budget_mm2)
     island_report = analyze_islands(printable_stl)
     slice_qc = qc_sliced_3mf(sliced_path, context=context)
-    result.qc_ok = bool(slice_qc.get("ok") and stl_report.get("ok", True) and island_report.get("ok", True))
+    result.qc_ok = bool(
+        slice_qc.get("ok") and stl_report.get("ok", True) and island_report.get("ok", True)
+    )
     if result.qc_ok:
         record("qc", "pass", "printability checks passed")
     else:
@@ -417,7 +423,11 @@ def _run_concept_with_fallback(project: Path, record: RecordFn) -> dict[str, Any
         return _concept_prompt_fallback(project, record)
 
     if not _concept_scene_markers_ok(project):
-        record("meshy concept", "warn", "photo concept flagged wrong scene markers; retrying mode=prompt")
+        record(
+            "meshy concept",
+            "warn",
+            "photo concept flagged wrong scene markers; retrying mode=prompt",
+        )
         return _concept_prompt_fallback(project, record)
 
     record("meshy concept", "pass", "concept sheet generated (photo)", concept["concept_path"])
@@ -430,7 +440,12 @@ def _concept_prompt_fallback(project: Path, record: RecordFn) -> dict[str, Any] 
     except MeshyError as exc:
         record("meshy concept", "fail", f"prompt fallback failed: {exc}")
         return None
-    record("meshy concept", "pass", "concept sheet generated (prompt fallback)", concept["concept_path"])
+    record(
+        "meshy concept",
+        "pass",
+        "concept sheet generated (prompt fallback)",
+        concept["concept_path"],
+    )
     return concept
 
 
@@ -439,9 +454,7 @@ def _concept_scene_markers_ok(project: Path) -> bool:
 
     result = validate_reference_photo(project)
     flagged = [*result.errors, *result.warnings]
-    return not any(
-        ("marina" in msg.lower()) or ("world cup" in msg.lower()) for msg in flagged
-    )
+    return not any(("marina" in msg.lower()) or ("world cup" in msg.lower()) for msg in flagged)
 
 
 def _archive_marina_concept(concept_path: Path, record: RecordFn) -> None:
@@ -479,7 +492,9 @@ def scale_mesh_to_envelope(stl_path: Path | str, envelope_mm: Sequence[float]) -
     extents = [float(e) for e in mesh.extents]
     sorted_extents = sorted(extents, reverse=True)
     sorted_envelope = sorted((float(e) for e in envelope_mm), reverse=True)
-    factors = [env / ext for env, ext in zip(sorted_envelope, sorted_extents) if ext > 0]
+    factors = [
+        env / ext for env, ext in zip(sorted_envelope, sorted_extents, strict=True) if ext > 0
+    ]
     factor = min(factors) if factors else 1.0
     scaled = factor < 1.0
     if scaled:

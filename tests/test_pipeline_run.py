@@ -60,7 +60,9 @@ class PipelineRunTests(unittest.TestCase):
                 "print_constraints:\n  geometry_contract:\n    single_fused_solid: true\n"
             )
             (project / "designs" / "v1" / "people.yaml").write_text("people: []\n")
-            (project / "designs" / "v1" / "visual_acceptance.yaml").write_text("visual_acceptance: {}\n")
+            (project / "designs" / "v1" / "visual_acceptance.yaml").write_text(
+                "visual_acceptance: {}\n"
+            )
             (project / "project.yaml").write_text(
                 "schema_version: 2\nslug: demo\nintent: Demo\nlane: build123d\n"
                 "current_revision: v1\nprinter:\n  model: Bambu Lab A1 mini\n"
@@ -73,30 +75,37 @@ class PipelineRunTests(unittest.TestCase):
             sliced = outputs / "demo-v1.gcode.3mf"
             sliced.write_bytes(b"PK\x03\x04")
 
-            with patch("bambu.pipeline.validate_design_spec", return_value={"ok": True, "errors": []}), patch(
-                "bambu.pipeline.load_design_spec", return_value={}
-            ), patch("bambu.pipeline.load_review_views", return_value=[]), patch(
-                "bambu.pipeline.review_project_3d",
-                return_value={
-                    "stl": str(fused),
-                    "fits_a1_mini": True,
-                    "mesh": {"watertight_manifold": True},
-                    "overhangs": {"ok": True},
-                    "islands": {"ok": True},
-                },
-            ), patch("bambu.pipeline.run_slice") as run_slice, patch(
-                "bambu.pipeline.qc_sliced_3mf", return_value={"ok": True}
-            ), patch(
-                "bambu.pipeline.analyze_stl_overhangs", return_value={"ok": True}
-            ), patch(
-                "bambu.pipeline.analyze_islands", return_value={"ok": True}
-            ), patch(
-                "bambu.pipeline.inspect_print_handoff"
-            ) as handoff, patch("bambu.pipeline.sync_project_artifacts", return_value={}):
+            with (
+                patch(
+                    "bambu.pipeline.validate_design_spec", return_value={"ok": True, "errors": []}
+                ),
+                patch("bambu.pipeline.load_design_spec", return_value={}),
+                patch("bambu.pipeline.load_review_views", return_value=[]),
+                patch(
+                    "bambu.pipeline.review_project_3d",
+                    return_value={
+                        "stl": str(fused),
+                        "fits_a1_mini": True,
+                        "mesh": {"watertight_manifold": True},
+                        "overhangs": {"ok": True},
+                        "islands": {"ok": True},
+                    },
+                ),
+                patch("bambu.pipeline.run_slice") as run_slice,
+                patch("bambu.pipeline.qc_sliced_3mf", return_value={"ok": True}),
+                patch("bambu.pipeline.analyze_stl_overhangs", return_value={"ok": True}),
+                patch("bambu.pipeline.analyze_islands", return_value={"ok": True}),
+                patch("bambu.pipeline.inspect_print_handoff") as handoff,
+                patch("bambu.pipeline.sync_project_artifacts", return_value={}),
+            ):
                 handoff.return_value = type(
                     "Report",
                     (),
-                    {"ready_for_manual_review": True, "open_command": "open demo.gcode.3mf", "missing_markers": []},
+                    {
+                        "ready_for_manual_review": True,
+                        "open_command": "open demo.gcode.3mf",
+                        "missing_markers": [],
+                    },
                 )()
                 run_slice.return_value = type(
                     "SliceResult",
@@ -173,39 +182,46 @@ class SceneStrategyPipelineTests(unittest.TestCase):
                 scene_stl.write_text("solid scene")
                 return {"stl_path": str(scene_stl)}
 
-            with patch("bambu.pipeline.validate_design_spec", return_value={"ok": True, "errors": []}), patch(
-                "bambu.pipeline.load_design_spec", return_value={}
-            ), patch(
-                "bambu.pipeline.validate_reference_photo",
-                return_value=SimpleNamespace(ok=True, errors=[], warnings=[]),
-            ), patch(
-                "bambu.pipeline.meshy_concept", side_effect=fake_concept
-            ) as meshy_concept, patch(
-                "bambu.pipeline.meshy_scene", side_effect=fake_scene
-            ) as meshy_scene, patch(
-                "bambu.pipeline.meshy_head"
-            ) as meshy_head, patch(
-                "bambu.pipeline.fuse_hybrid_project"
-            ) as fuse_hybrid_project, patch(
-                "bambu.pipeline.scale_mesh_to_envelope",
-                return_value={"scaled": False, "factor": 1.0, "original_extents": [10, 10, 10]},
-            ) as scale_mesh, patch(
-                "bambu.pipeline.load_review_views", return_value=[]
-            ), patch(
-                "bambu.pipeline.review_project_3d", return_value=self._green_review(scene_stl)
-            ), patch("bambu.pipeline.run_slice") as run_slice, patch(
-                "bambu.pipeline.qc_sliced_3mf", return_value={"ok": True}
-            ), patch(
-                "bambu.pipeline.analyze_stl_overhangs", return_value={"ok": True}
-            ), patch(
-                "bambu.pipeline.analyze_islands", return_value={"ok": True}
-            ), patch("bambu.pipeline.inspect_print_handoff") as handoff, patch(
-                "bambu.pipeline.sync_project_artifacts", return_value={}
+            with (
+                patch(
+                    "bambu.pipeline.validate_design_spec", return_value={"ok": True, "errors": []}
+                ),
+                patch("bambu.pipeline.load_design_spec", return_value={}),
+                patch(
+                    "bambu.pipeline.validate_reference_photo",
+                    return_value=SimpleNamespace(ok=True, errors=[], warnings=[]),
+                ),
+                patch("bambu.pipeline.meshy_concept", side_effect=fake_concept) as meshy_concept,
+                patch("bambu.pipeline.meshy_scene", side_effect=fake_scene) as meshy_scene,
+                patch("bambu.pipeline.meshy_head") as meshy_head,
+                patch("bambu.pipeline.fuse_hybrid_project") as fuse_hybrid_project,
+                patch(
+                    "bambu.pipeline.scale_mesh_to_envelope",
+                    return_value={
+                        "scaled": False,
+                        "factor": 1.0,
+                        "original_extents": [10, 10, 10],
+                    },
+                ) as scale_mesh,
+                patch("bambu.pipeline.load_review_views", return_value=[]),
+                patch(
+                    "bambu.pipeline.review_project_3d", return_value=self._green_review(scene_stl)
+                ),
+                patch("bambu.pipeline.run_slice") as run_slice,
+                patch("bambu.pipeline.qc_sliced_3mf", return_value={"ok": True}),
+                patch("bambu.pipeline.analyze_stl_overhangs", return_value={"ok": True}),
+                patch("bambu.pipeline.analyze_islands", return_value={"ok": True}),
+                patch("bambu.pipeline.inspect_print_handoff") as handoff,
+                patch("bambu.pipeline.sync_project_artifacts", return_value={}),
             ):
                 handoff.return_value = type(
                     "Report",
                     (),
-                    {"ready_for_manual_review": True, "open_command": "open scene.gcode.3mf", "missing_markers": []},
+                    {
+                        "ready_for_manual_review": True,
+                        "open_command": "open scene.gcode.3mf",
+                        "missing_markers": [],
+                    },
                 )()
                 run_slice.return_value = type(
                     "SliceResult",
@@ -266,32 +282,42 @@ class SceneStrategyPipelineTests(unittest.TestCase):
                 scene_stl.write_text("solid scene")
                 return {"stl_path": str(scene_stl)}
 
-            with patch("bambu.pipeline.validate_design_spec", return_value={"ok": True, "errors": []}), patch(
-                "bambu.pipeline.load_design_spec", return_value={}
-            ), patch(
-                "bambu.pipeline.meshy_concept", side_effect=fake_concept
-            ) as meshy_concept, patch(
-                "bambu.pipeline.meshy_scene", side_effect=fake_scene
-            ), patch("bambu.pipeline.meshy_head") as meshy_head, patch(
-                "bambu.pipeline.fuse_hybrid_project"
-            ) as fuse_hybrid_project, patch(
-                "bambu.pipeline.scale_mesh_to_envelope",
-                return_value={"scaled": False, "factor": 1.0, "original_extents": [10, 10, 10]},
-            ), patch("bambu.pipeline.load_review_views", return_value=[]), patch(
-                "bambu.pipeline.review_project_3d", return_value=self._green_review(scene_stl)
-            ), patch("bambu.pipeline.run_slice") as run_slice, patch(
-                "bambu.pipeline.qc_sliced_3mf", return_value={"ok": True}
-            ), patch(
-                "bambu.pipeline.analyze_stl_overhangs", return_value={"ok": True}
-            ), patch(
-                "bambu.pipeline.analyze_islands", return_value={"ok": True}
-            ), patch("bambu.pipeline.inspect_print_handoff") as handoff, patch(
-                "bambu.pipeline.sync_project_artifacts", return_value={}
+            with (
+                patch(
+                    "bambu.pipeline.validate_design_spec", return_value={"ok": True, "errors": []}
+                ),
+                patch("bambu.pipeline.load_design_spec", return_value={}),
+                patch("bambu.pipeline.meshy_concept", side_effect=fake_concept) as meshy_concept,
+                patch("bambu.pipeline.meshy_scene", side_effect=fake_scene),
+                patch("bambu.pipeline.meshy_head") as meshy_head,
+                patch("bambu.pipeline.fuse_hybrid_project") as fuse_hybrid_project,
+                patch(
+                    "bambu.pipeline.scale_mesh_to_envelope",
+                    return_value={
+                        "scaled": False,
+                        "factor": 1.0,
+                        "original_extents": [10, 10, 10],
+                    },
+                ),
+                patch("bambu.pipeline.load_review_views", return_value=[]),
+                patch(
+                    "bambu.pipeline.review_project_3d", return_value=self._green_review(scene_stl)
+                ),
+                patch("bambu.pipeline.run_slice") as run_slice,
+                patch("bambu.pipeline.qc_sliced_3mf", return_value={"ok": True}),
+                patch("bambu.pipeline.analyze_stl_overhangs", return_value={"ok": True}),
+                patch("bambu.pipeline.analyze_islands", return_value={"ok": True}),
+                patch("bambu.pipeline.inspect_print_handoff") as handoff,
+                patch("bambu.pipeline.sync_project_artifacts", return_value={}),
             ):
                 handoff.return_value = type(
                     "Report",
                     (),
-                    {"ready_for_manual_review": True, "open_command": "open scene.gcode.3mf", "missing_markers": []},
+                    {
+                        "ready_for_manual_review": True,
+                        "open_command": "open scene.gcode.3mf",
+                        "missing_markers": [],
+                    },
                 )()
                 run_slice.return_value = type(
                     "SliceResult",
@@ -330,7 +356,7 @@ class ScaleMeshTests(unittest.TestCase):
             self.assertLess(report["factor"], 1.0)
             reloaded = sorted(trimesh.load(stl, force="mesh").extents, reverse=True)
             envelope = sorted([118.0, 65.0, 68.0], reverse=True)
-            for ext, env in zip(reloaded, envelope):
+            for ext, env in zip(reloaded, envelope, strict=True):
                 self.assertLessEqual(ext, env + 1e-6)
 
     def test_does_not_scale_mesh_already_within_envelope(self):

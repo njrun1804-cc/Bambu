@@ -1,7 +1,6 @@
 import unittest
 from pathlib import Path
 
-
 REPO = Path(__file__).resolve().parents[1]
 
 
@@ -30,4 +29,3 @@ class AgentScaffoldingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

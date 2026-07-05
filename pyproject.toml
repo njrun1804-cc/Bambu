@@ -42,3 +42,12 @@ bambu-mcp = "bambu.mcp_server:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["bambu*"]
+
+[dependency-groups]
+dev = ["ruff>=0.14.0"]
+
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.lint]
+select = ["F", "I", "B"]

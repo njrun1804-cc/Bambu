@@ -50,8 +50,9 @@ class HybridReleaseTests(unittest.TestCase):
         self.assertTrue(report["mesh"].get("watertight_manifold"))
 
     def test_release_check_cli_skips_freecad_with_stl(self):
-        from bambu.cli import main
         import io
+
+        from bambu.cli import main
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -65,15 +66,20 @@ class HybridReleaseTests(unittest.TestCase):
             _write_watertight_tetrahedron(stl)
 
             output = io.StringIO()
-            with patch("bambu.review3d.review_project_3d") as review, patch(
-                "bambu.cli.validate_design_spec", return_value={"ok": True, "errors": []}
+            with (
+                patch("bambu.review3d.review_project_3d") as review,
+                patch("bambu.cli.validate_design_spec", return_value={"ok": True, "errors": []}),
             ):
                 review.return_value = {
                     "step": None,
                     "stl": str(stl),
                     "fits_a1_mini": True,
                     "freecad": {"skipped": True, "reason": "fused STL path"},
-                    "mesh": {"watertight_manifold": True, "open_edges": 0, "non_manifold_edges": 0},
+                    "mesh": {
+                        "watertight_manifold": True,
+                        "open_edges": 0,
+                        "non_manifold_edges": 0,
+                    },
                     "overhangs": {"ok": True},
                     "islands": {"ok": True},
                     "blender": {"paths": []},
@@ -98,7 +104,6 @@ class HybridReleaseTests(unittest.TestCase):
         self.assertEqual(code, 0)
         review.assert_called_once()
         self.assertTrue(review.call_args.kwargs.get("skip_freecad"))
-
 
     def test_mcp_release_check_accepts_stl_flag(self):
         from bambu.mcp_server import bambu_release_check

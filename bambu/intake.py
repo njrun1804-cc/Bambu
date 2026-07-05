@@ -2,30 +2,27 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import hashlib
 import shutil
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-from bambu.projects import slugify, validate_project, write_artifact_manifest
 from bambu.context import context_view
+from bambu.projects import slugify, validate_project, write_artifact_manifest
 from bambu.reference_validation import (
     KNOWN_WRONG_REFERENCE_MARKERS,
     KNOWN_WRONG_REFERENCE_SHA256,
 )
 
-
 ARCHETYPES = ("seated_diorama", "standing_figurines", "relief_plaque")
 SPEC_TEMPLATE_ROOT = Path(__file__).resolve().parent / "spec_templates"
 PROMPT_PATH = Path("agents/prompts/intake-from-photo.md")
 REPO_ROOT = Path(__file__).resolve().parent.parent
-CURSOR_WORKSPACE_STORAGE = (
-    Path.home() / "Library/Application Support/Cursor/User/workspaceStorage"
-)
+CURSOR_WORKSPACE_STORAGE = Path.home() / "Library/Application Support/Cursor/User/workspaceStorage"
 CURSOR_UPLOAD_SENTINELS = frozenset({"@cursor", "cursor", "cursor-upload", "latest"})
 FORBIDDEN_DEFAULT_REFERENCES = (
     REPO_ROOT / "private/references/clear-right-pair.jpg",
@@ -37,9 +34,7 @@ def archetypes_with_templates() -> tuple[str, ...]:
     """Return archetypes that have spec template directories."""
 
     return tuple(
-        archetype
-        for archetype in ARCHETYPES
-        if (SPEC_TEMPLATE_ROOT / archetype).is_dir()
+        archetype for archetype in ARCHETYPES if (SPEC_TEMPLATE_ROOT / archetype).is_dir()
     )
 
 
@@ -62,7 +57,8 @@ def find_cursor_upload_photos() -> list[Path]:
         uploads.extend(
             path
             for path in images_dir.iterdir()
-            if path.is_file() and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+            if path.is_file()
+            and path.suffix.lower() in {".jpg", ".jpeg", ".png", ".webp", ".heic"}
         )
     return sorted(uploads, key=lambda path: path.stat().st_mtime, reverse=True)
 
@@ -145,7 +141,9 @@ def resolve_photo_path(
                 "Attach the photo in chat or pass an explicit path."
             )
         photo_path = uploads[0]
-        _reject_wrong_reference(photo_path, archetype=archetype, slug=slug, force_reference=force_reference)
+        _reject_wrong_reference(
+            photo_path, archetype=archetype, slug=slug, force_reference=force_reference
+        )
         return photo_path
 
     photo_path = Path(raw).expanduser()
@@ -433,7 +431,13 @@ def _write_project_manifest(
         "material": selected_material,
         "plate": {**context["plate"], "side": "textured"},
         "constraints": {"dimensions_mm": [], "tolerance_notes": ""},
-        "manual_gates": ["design_check", "release_check", "render_approval", "slicer_review", "print_start"],
+        "manual_gates": [
+            "design_check",
+            "release_check",
+            "render_approval",
+            "slicer_review",
+            "print_start",
+        ],
         "source_files": ["source/v1/model.py"],
     }
     errors = validate_project(manifest)

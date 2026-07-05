@@ -62,7 +62,9 @@ class MeshyTests(unittest.TestCase):
 
     @patch.object(MeshyClient, "poll_task")
     @patch.object(MeshyClient, "create_task")
-    def test_analyze_printability_uses_print_analyze_endpoint(self, create_task: MagicMock, poll_task: MagicMock):
+    def test_analyze_printability_uses_print_analyze_endpoint(
+        self, create_task: MagicMock, poll_task: MagicMock
+    ):
         create_task.return_value = "analyze-task"
         poll_task.return_value = {"status": "SUCCEEDED"}
         client = MeshyClient(api_key="msy_test")
@@ -72,7 +74,9 @@ class MeshyTests(unittest.TestCase):
 
     @patch.object(MeshyClient, "poll_task")
     @patch.object(MeshyClient, "create_task")
-    def test_repair_printability_uses_print_repair_endpoint(self, create_task: MagicMock, poll_task: MagicMock):
+    def test_repair_printability_uses_print_repair_endpoint(
+        self, create_task: MagicMock, poll_task: MagicMock
+    ):
         create_task.return_value = "repair-task"
         poll_task.return_value = {"status": "SUCCEEDED"}
         client = MeshyClient(api_key="msy_test")
@@ -147,7 +151,9 @@ class MeshyTests(unittest.TestCase):
             urls.return_value = {"stl": "https://example.com/woman.stl"}
             download.side_effect = lambda url, dest: dest.write_bytes(b"stl") or dest
 
-            result = meshy_head(project, subject="woman", client=MeshyClient(api_key=TEST_MODE_API_KEY))
+            result = meshy_head(
+                project, subject="woman", client=MeshyClient(api_key=TEST_MODE_API_KEY)
+            )
 
             self.assertTrue(Path(result["stl_path"]).exists())
             self.assertIn("woman-head.stl", result["stl_path"])
@@ -160,9 +166,7 @@ class MeshyTests(unittest.TestCase):
             mesh = project / "mesh"
             mesh.mkdir(parents=True)
             (project / "project.yaml").write_text("slug: demo\ncurrent_revision: v1\n")
-            (mesh / "provenance.yaml").write_text(
-                "concept:\n  task_id: proto-123\n"
-            )
+            (mesh / "provenance.yaml").write_text("concept:\n  task_id: proto-123\n")
             build.return_value = {"id": "build-task", "consumed_credits": 30}
             dest = mesh / "figure-full.stl"
             dest.write_bytes(b"stl")

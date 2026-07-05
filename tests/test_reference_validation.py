@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import yaml
 
-from bambu.meshy import MeshyClient, MeshyError, TEST_MODE_API_KEY, meshy_concept
+from bambu.meshy import TEST_MODE_API_KEY, MeshyClient, MeshyError, meshy_concept
 from bambu.reference_validation import (
     intake_subject_requirements,
     validate_reference_photo,

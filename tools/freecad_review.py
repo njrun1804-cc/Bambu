@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import FreeCAD as App  # type: ignore
 import Part  # type: ignore
-
 
 BEGIN = "FREECAD_REVIEW_JSON_BEGIN"
 END = "FREECAD_REVIEW_JSON_END"
@@ -43,7 +42,9 @@ def inspect_shape(shape, input_step: Path) -> dict:
     vertices, facets = shape.tessellate(0.2)
     bbox = shape.BoundBox
     center = getattr(shape, "CenterOfMass", None) or getattr(shape, "CenterOfGravity", None)
-    center_of_mass = [float(center.x), float(center.y), float(center.z)] if center is not None else []
+    center_of_mass = (
+        [float(center.x), float(center.y), float(center.z)] if center is not None else []
+    )
     report = {
         "available": True,
         "freecad_version": App.ConfigGet("ExeVersion"),
@@ -108,7 +109,11 @@ def _classify_geometry_errors(error_text: str) -> dict:
         if ":" not in line or line.endswith("errors:"):
             continue
         klass = line.rsplit(":", 1)[-1].strip()
-        bucket = blocking if any(marker in klass for marker in BLOCKING_GEOMETRY_CLASSES) else informational
+        bucket = (
+            blocking
+            if any(marker in klass for marker in BLOCKING_GEOMETRY_CLASSES)
+            else informational
+        )
         bucket[klass] = bucket.get(klass, 0) + 1
     return {"blocking": blocking, "informational": informational}
 
@@ -122,7 +127,9 @@ def _paths_from_args() -> tuple[Path, Path]:
             raise SystemExit("--pass requires input STEP and output JSON") from error
     if os.environ.get("FREECAD_INPUT_STEP") and os.environ.get("FREECAD_OUTPUT_JSON"):
         return Path(os.environ["FREECAD_INPUT_STEP"]), Path(os.environ["FREECAD_OUTPUT_JSON"])
-    raise SystemExit("Provide --pass <input.step> <output.json> or FREECAD_INPUT_STEP/FREECAD_OUTPUT_JSON")
+    raise SystemExit(
+        "Provide --pass <input.step> <output.json> or FREECAD_INPUT_STEP/FREECAD_OUTPUT_JSON"
+    )
 
 
 def _warnings(report: dict) -> list[str]:
@@ -137,10 +144,17 @@ def _warnings(report: dict) -> list[str]:
         warnings.append("volume is not positive")
     if report["bbox_mm"]["x"] <= 0 or report["bbox_mm"]["y"] <= 0 or report["bbox_mm"]["z"] <= 0:
         warnings.append("bounding box has non-positive dimension")
-    if report["bbox_mm"]["x"] > 180 or report["bbox_mm"]["y"] > 180 or report["bbox_mm"]["z"] > 180:
+    if (
+        report["bbox_mm"]["x"] > 180
+        or report["bbox_mm"]["y"] > 180
+        or report["bbox_mm"]["z"] > 180
+    ):
         warnings.append("bounding box exceeds A1 mini build volume")
     if report["geometry_error_classes"]["blocking"]:
-        warnings.append("blocking geometry errors: " + ", ".join(sorted(report["geometry_error_classes"]["blocking"])))
+        warnings.append(
+            "blocking geometry errors: "
+            + ", ".join(sorted(report["geometry_error_classes"]["blocking"]))
+        )
     return warnings
 
 

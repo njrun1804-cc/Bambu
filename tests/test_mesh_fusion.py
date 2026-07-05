@@ -69,7 +69,9 @@ class MeshFusionTests(unittest.TestCase):
             project = root / "projects" / "demo"
             design = project / "designs" / "v1"
             design.mkdir(parents=True)
-            (project / "project.yaml").write_text("slug: demo\narchetype: seated_diorama\ncurrent_revision: v1\n")
+            (project / "project.yaml").write_text(
+                "slug: demo\narchetype: seated_diorama\ncurrent_revision: v1\n"
+            )
             (design / "people.yaml").write_text("schema_version: 2\npeople: []\n")
             (design / "fusion_manifest.yaml").write_text(
                 "head_meshes:\n"
@@ -82,7 +84,9 @@ class MeshFusionTests(unittest.TestCase):
             )
             (project / "mesh").mkdir(parents=True)
             for head_id in ("woman", "dog"):
-                trimesh.creation.icosphere(subdivisions=1, radius=0.2).export(project / "mesh" / f"{head_id}-head.stl")
+                trimesh.creation.icosphere(subdivisions=1, radius=0.2).export(
+                    project / "mesh" / f"{head_id}-head.stl"
+                )
             fusion = load_fusion_manifest(project, revision="v1")
             specs = _load_head_specs(project, fusion, root, revision="v1")
         woman = next(spec for spec in specs if spec.head_id == "woman")
@@ -94,7 +98,9 @@ class MeshFusionTests(unittest.TestCase):
         from bambu.mesh_fusion import align_head_to_stub
 
         mesh = trimesh.creation.box(extents=[2, 2, 2])
-        aligned = align_head_to_stub(mesh, (10.0, 5.0, 20.0), target_width_mm=4.0, scale=1.0, sink_mm=1.0)
+        aligned = align_head_to_stub(
+            mesh, (10.0, 5.0, 20.0), target_width_mm=4.0, scale=1.0, sink_mm=1.0
+        )
         self.assertAlmostEqual(float(aligned.bounds[0, 0]), 8.0, places=1)
         self.assertAlmostEqual(float(aligned.bounds[0, 1]), 3.0, places=1)
         self.assertAlmostEqual(float(aligned.bounds[0, 2]), 19.0, places=1)
@@ -184,16 +190,29 @@ class MeshFusionTests(unittest.TestCase):
             repair.assert_called_once()
 
     def test_fuse_mesh_cli(self):
-        from bambu.cli import main
         import io
 
-        with patch("bambu.mesh_fusion.fuse_hybrid_project") as fuse, patch(
-            "bambu.projects.load_project", return_value={"slug": "demo", "current_revision": "v1"}
+        from bambu.cli import main
+
+        with (
+            patch("bambu.mesh_fusion.fuse_hybrid_project") as fuse,
+            patch(
+                "bambu.projects.load_project",
+                return_value={"slug": "demo", "current_revision": "v1"},
+            ),
         ):
             fuse.return_value = {
                 "body_stl": "outputs/demo-v1-body.stl",
                 "fused_stl": "outputs/demo-v1-fused.stl",
-                "heads": [{"id": "woman", "stub_center": [0, 0, 1], "target_width_mm": 20, "scale": 1.0, "sink_mm": 5}],
+                "heads": [
+                    {
+                        "id": "woman",
+                        "stub_center": [0, 0, 1],
+                        "target_width_mm": 20,
+                        "scale": 1.0,
+                        "sink_mm": 5,
+                    }
+                ],
                 "mesh": {"watertight_manifold": True, "open_edges": 0, "non_manifold_edges": 0},
             }
             output = io.StringIO()

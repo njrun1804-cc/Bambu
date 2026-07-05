@@ -17,7 +17,6 @@ import yaml
 from bambu.mesh_lane import mesh_intake, write_mesh_provenance
 from bambu.reference_validation import ensure_reference_photo_valid, select_reference_photo
 
-
 MESHY_BASE_URL = "https://api.meshy.ai/openapi"
 TEST_MODE_API_KEY = "msy_dummy_api_key_for_test_mode_12345678"
 DEFAULT_POLL_INTERVAL_S = 3.0
@@ -130,7 +129,9 @@ class MeshyClient:
         with httpx.Client(timeout=120.0) as client:
             response = client.request(method, url, headers=headers, json=json_body, params=params)
         if response.status_code == 402:
-            raise MeshyError("Meshy credits exhausted (402). Check balance with: bambu meshy balance")
+            raise MeshyError(
+                "Meshy credits exhausted (402). Check balance with: bambu meshy balance"
+            )
         if response.status_code == 429:
             raise MeshyError("Meshy rate limit (429). Pro tier: 20 req/min, 10 concurrent tasks.")
         if response.status_code >= 400:
@@ -204,8 +205,14 @@ class MeshyClient:
         )
         return self.poll_task("creative-lab/figure/v1/build", task_id)
 
-    def run_image_to_3d(self, image_path: Path | str, *, extra: dict[str, Any] | None = None) -> dict[str, Any]:
-        payload = {**FDM_HEAD_PAYLOAD_BASE, "image_url": self.image_data_uri(image_path), **(extra or {})}
+    def run_image_to_3d(
+        self, image_path: Path | str, *, extra: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        payload = {
+            **FDM_HEAD_PAYLOAD_BASE,
+            "image_url": self.image_data_uri(image_path),
+            **(extra or {}),
+        }
         task_id = self.create_task("v1/image-to-3d", payload)
         return self.poll_task("v1/image-to-3d", task_id)
 
@@ -213,7 +220,9 @@ class MeshyClient:
         task_id = self.create_task("v1/text-to-image", {"prompt": prompt, "ai_model": "meshy-5"})
         return self.poll_task("v1/text-to-image", task_id)
 
-    def analyze_printability(self, *, input_task_id: str | None = None, model_url: str | None = None) -> dict[str, Any]:
+    def analyze_printability(
+        self, *, input_task_id: str | None = None, model_url: str | None = None
+    ) -> dict[str, Any]:
         body: dict[str, Any] = {}
         if input_task_id:
             body["input_task_id"] = input_task_id
@@ -499,7 +508,12 @@ def meshy_figure_build(
         meshy_task_id=task_id,
         endpoint="creative-lab/figure/v1/build",
     )
-    return {"stl_path": str(dest), "task": task, "prototype_task_id": str(proto_id), "intake": intake}
+    return {
+        "stl_path": str(dest),
+        "task": task,
+        "prototype_task_id": str(proto_id),
+        "intake": intake,
+    }
 
 
 def meshy_scene(
@@ -550,7 +564,9 @@ def meshy_scene(
     prov["scene"] = {
         "task_id": task_id,
         "endpoint": "v1/image-to-3d",
-        "source_image": str(source.relative_to(project)) if source.is_relative_to(project) else str(source),
+        "source_image": str(source.relative_to(project))
+        if source.is_relative_to(project)
+        else str(source),
         "credits": task.get("consumed_credits", 20),
         "artifact": "mesh/scene-full.stl",
     }
@@ -674,7 +690,11 @@ def meshy_analyze(
     mesh_client = client or MeshyClient.from_env()
     task_id = input_task_id
     if not task_id and subject:
-        prov = yaml.safe_load((project / "mesh" / "provenance.yaml").read_text()) if (project / "mesh" / "provenance.yaml").exists() else {}
+        prov = (
+            yaml.safe_load((project / "mesh" / "provenance.yaml").read_text())
+            if (project / "mesh" / "provenance.yaml").exists()
+            else {}
+        )
         task_id = (prov.get("heads", {}).get(subject) or {}).get("task_id")
     if not task_id:
         raise MeshyError("analyze requires --subject (with provenance task_id) or --task-id")

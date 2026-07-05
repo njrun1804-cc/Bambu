@@ -14,7 +14,6 @@ import yaml
 from bambu.cad.specs import character_metrics, load_specs
 from bambu.projects import load_project, write_artifact_manifest
 
-
 FUSION_MANIFEST_NAME = "fusion_manifest.yaml"
 MESH_DIR_NAME = "mesh"
 PROVENANCE_NAME = "provenance.yaml"
@@ -91,7 +90,11 @@ def write_fusion_manifest_stub(
         )
     if not head_meshes:
         head_meshes = [
-            {"id": "subject", "source": "mesh/subject-head.stl", "align": {"x": 0, "y": 0, "z": 0, "scale": 1.0}}
+            {
+                "id": "subject",
+                "source": "mesh/subject-head.stl",
+                "align": {"x": 0, "y": 0, "z": 0, "scale": 1.0},
+            }
         ]
 
     data = {
