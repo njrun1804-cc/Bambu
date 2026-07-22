@@ -1,31 +1,22 @@
 name: CI
 
 on:
-  push:
   pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: shared-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
-        with:
-          python-version: "3.12"
-          enable-cache: true
-      - name: Sync dependencies
-        run: uv sync --frozen --all-groups
-      - name: Check
-        run: ./scripts/check.sh
-      - name: Validate check receipt
-        run: ./scripts/check-status.sh --strict
+  repo-check:
+    uses: njrun1804-cc/engineering-control-plane/.github/workflows/repo-check.yml@1a928e8996449526d38999f1df8a53e52e5f52a6
+    with:
+      profile: bambu
+
