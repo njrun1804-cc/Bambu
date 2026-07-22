@@ -16,6 +16,6 @@ permissions:
 
 jobs:
   repo-check:
-    uses: njrun1804-cc/engineering-control-plane/.github/workflows/repo-check.yml@3df7e16be3a21b55348b8faa866c9bce7828d88c
+    uses: njrun1804-cc/engineering-control-plane/.github/workflows/repo-check.yml@543d3b29b633621910a1d98c5423be9416e9eaca
     with:
       profile: bambu

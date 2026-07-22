@@ -1,0 +1,7 @@
+# Informational ownership; a sole author cannot approve their own pull request.
+/.github/ @njrun1804
+/.greptile/ @njrun1804
+/AGENTS.md @njrun1804
+/CLAUDE.md @njrun1804
+/pyproject.toml @njrun1804
+/scripts/check.sh @njrun1804
