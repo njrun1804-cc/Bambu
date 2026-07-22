@@ -1,0 +1,7 @@
+{
+  "files": [
+    {"path": "AGENTS.md", "description": "Repository workflow and safety policy."},
+    {"path": "pyproject.toml", "description": "Runtime and dependency authority."},
+    {"path": "scripts/check.sh", "description": "Authoritative deterministic gate."}
+  ]
+}
