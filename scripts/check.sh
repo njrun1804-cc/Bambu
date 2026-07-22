@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "intentional shared-CI failure canary" >&2
+exit 97
+
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 if [[ "${CHECK_RUNNER_ACTIVE:-0}" != "1" ]]; then
   CHECK_RUN_CACHE_ALLOWED=0 exec "$script_dir/check-runner.sh" "$script_dir/check.sh" "$@"
