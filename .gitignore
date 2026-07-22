@@ -34,3 +34,4 @@ outputs/*
 *.gcode
 *.gcode.3mf
 *.png
+.check-runs/
