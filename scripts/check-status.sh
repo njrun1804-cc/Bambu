@@ -123,6 +123,21 @@ toolchain_fingerprint() {
     else
       echo "node/npm unavailable"
     fi
+    for gate_tool in shellcheck luac stylua luacheck; do
+      if git grep -Eq "(^|[^[:alnum:]_-])${gate_tool}([^[:alnum:]_-]|$)" -- \
+        'check.sh' 'scripts/check*.sh' 2>/dev/null; then
+        if command -v "$gate_tool" >/dev/null 2>&1; then
+          printf '%s-path: %s\n' "$gate_tool" "$(command -v "$gate_tool")"
+          printf '%s-version:\n' "$gate_tool"
+          case "$gate_tool" in
+            shellcheck|stylua|luacheck) "$gate_tool" --version 2>&1 || true ;;
+            luac) "$gate_tool" -v 2>&1 || true ;;
+          esac
+        else
+          printf '%s unavailable\n' "$gate_tool"
+        fi
+      fi
+    done
   } | hash_stream
 }
 
@@ -131,9 +146,17 @@ dependency_fingerprint() {
     printf '%s\n' "$dependency_file"
     hash_file "$dependency_file"
   done < <(
-    git ls-files -- \
-      'uv.lock' 'pyproject.toml' 'requirements*.txt' \
-      'package-lock.json' 'npm-shrinkwrap.json' 'pnpm-lock.yaml' 'yarn.lock' \
+    git ls-files \
+      | awk -F/ '
+          $NF == "uv.lock" || $NF == "pyproject.toml" ||
+          $NF ~ /^requirements.*\.txt$/ ||
+          $NF == "package-lock.json" || $NF == "npm-shrinkwrap.json" ||
+          $NF == "pnpm-lock.yaml" || $NF == "yarn.lock" ||
+          $NF == "Cargo.lock" || $NF == "go.sum" ||
+          $NF == "poetry.lock" || $NF == "Pipfile.lock" ||
+          $NF == ".python-version" || $NF == ".node-version" || $NF == ".nvmrc" ||
+          $NF == "rust-toolchain" || $NF == "rust-toolchain.toml"
+        ' \
       | sort
   ) | hash_stream
 }
