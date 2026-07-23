@@ -85,8 +85,35 @@ python_bin() {
   fi
 }
 
+toolchain_fingerprint() {
+  {
+    bash --version 2>&1 | head -n 1
+    git --version 2>&1
+    "$(python_bin)" --version 2>&1
+    if command -v uv >/dev/null 2>&1; then
+      uv --version 2>&1
+    else
+      echo "uv unavailable"
+    fi
+  } | hash_stream
+}
+
+dependency_fingerprint() {
+  while IFS= read -r dependency_file; do
+    printf '%s\n' "$dependency_file"
+    hash_file "$dependency_file"
+  done < <(
+    git ls-files -- \
+      'uv.lock' 'pyproject.toml' 'requirements*.txt' \
+      'package-lock.json' 'npm-shrinkwrap.json' 'pnpm-lock.yaml' 'yarn.lock' \
+      | sort
+  ) | hash_stream
+}
+
 current_head="$(git rev-parse HEAD)"
 current_fingerprint="$(worktree_fingerprint)"
+current_toolchain_fingerprint="$(toolchain_fingerprint)"
+current_dependency_fingerprint="$(dependency_fingerprint)"
 current_git_worktree="$(pwd -P)"
 current_git_common_dir="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"
 
@@ -94,6 +121,8 @@ export CHECK_STATUS_RECEIPT="$receipt"
 export CHECK_STATUS_STRICT="$strict"
 export CHECK_STATUS_HEAD="$current_head"
 export CHECK_STATUS_FINGERPRINT="$current_fingerprint"
+export CHECK_STATUS_TOOLCHAIN_FINGERPRINT="$current_toolchain_fingerprint"
+export CHECK_STATUS_DEPENDENCY_FINGERPRINT="$current_dependency_fingerprint"
 export CHECK_STATUS_GIT_WORKTREE="$current_git_worktree"
 export CHECK_STATUS_GIT_COMMON_DIR="$current_git_common_dir"
 
@@ -109,6 +138,8 @@ receipt_path = Path(os.environ["CHECK_STATUS_RECEIPT"])
 strict = os.environ["CHECK_STATUS_STRICT"] == "1"
 current_head = os.environ["CHECK_STATUS_HEAD"]
 current_fingerprint = os.environ["CHECK_STATUS_FINGERPRINT"]
+current_toolchain_fingerprint = os.environ["CHECK_STATUS_TOOLCHAIN_FINGERPRINT"]
+current_dependency_fingerprint = os.environ["CHECK_STATUS_DEPENDENCY_FINGERPRINT"]
 current_git_worktree = os.environ["CHECK_STATUS_GIT_WORKTREE"]
 current_git_common_dir = os.environ["CHECK_STATUS_GIT_COMMON_DIR"]
 
@@ -270,6 +301,10 @@ if payload.get("git_common_dir") != current_git_common_dir:
     errors.append("git common dir mismatch")
 if payload.get("worktree_fingerprint") != current_fingerprint:
     errors.append("worktree fingerprint mismatch")
+if payload.get("toolchain_fingerprint") != current_toolchain_fingerprint:
+    errors.append("toolchain fingerprint mismatch")
+if payload.get("dependency_fingerprint") != current_dependency_fingerprint:
+    errors.append("dependency fingerprint mismatch")
 if payload.get("finished_at_epoch", -1) < payload.get("started_at_epoch", 0):
     errors.append("finished_at is before started_at")
 # check-runner.sh's only caller (check.sh) never mutates the tree (ruff format --check, gen/vendor
