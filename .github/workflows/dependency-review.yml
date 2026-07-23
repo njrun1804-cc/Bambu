@@ -1,0 +1,17 @@
+name: Dependency review advisory
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: dependency-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    uses: njrun1804-cc/engineering-control-plane/.github/workflows/dependency-review.yml@d7f8ec4e1b24f562cacb65901486f6429d2c481a
