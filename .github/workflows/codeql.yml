@@ -1,0 +1,24 @@
+name: CodeQL advisory
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: codeql-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    permissions:
+      contents: read
+      security-events: write
+    uses: njrun1804-cc/engineering-control-plane/.github/workflows/codeql.yml@d7f8ec4e1b24f562cacb65901486f6429d2c481a
+    with:
+      languages: python
